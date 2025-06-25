@@ -40,5 +40,39 @@
     "spoofFingerprint": true,
     "createdAt": "2024-01-01T00:00:00.000Z",
     "updatedAt": "2024-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "92b6137c-a2f6-49af-9626-5a730df30ef1",
+    "name": "Test Profile Vietnam",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "timezone": "Asia/Ho_Chi_Minh",
+    "proxy": null,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "spoofFingerprint": true,
+    "createdAt": "2025-06-25T14:21:50.263Z",
+    "updatedAt": "2025-06-25T14:21:50.263Z"
+  },
+  {
+    "id": "5bb49a53-471e-4aa0-ae44-3580ad933941",
+    "name": "Test Profile with Proxy",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "timezone": "Asia/Tokyo",
+    "proxy": {
+      "host": "proxy.example.com",
+      "port": 8080,
+      "type": "http",
+      "username": "user",
+      "password": "pass"
+    },
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "spoofFingerprint": true,
+    "createdAt": "2025-06-25T14:25:03.152Z",
+    "updatedAt": "2025-06-25T14:25:03.152Z"
   }
 ]

@@ -1,6 +1,7 @@
 const express = require('express');
 const ProfileService = require('../services/ProfileService');
-const BrowserService = require('../services/BrowserService');
+// Use MockBrowserService for Replit demo, switch to BrowserService for production
+const BrowserService = require('../services/MockBrowserService');
 const logger = require('../utils/logger');
 
 const router = express.Router();

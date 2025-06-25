@@ -4,9 +4,41 @@ const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 // Add stealth plugin to avoid detection
 puppeteer.use(StealthPlugin());
 
+// Get available browser executable path
+function getBrowserExecutablePath() {
+    const { execSync } = require('child_process');
+    const fs = require('fs');
+    
+    // Try to find chromium through which command
+    try {
+        const chromiumPath = execSync('which chromium', { encoding: 'utf8' }).trim();
+        if (chromiumPath && fs.existsSync(chromiumPath)) {
+            return chromiumPath;
+        }
+    } catch (error) {
+        // Continue to try other paths
+    }
+    
+    const possiblePaths = [
+        '/usr/bin/google-chrome-stable',
+        '/usr/bin/google-chrome',
+        '/usr/bin/chromium-browser',
+        '/usr/bin/chromium',
+        '/snap/bin/chromium'
+    ];
+    
+    for (const path of possiblePaths) {
+        if (fs.existsSync(path)) {
+            return path;
+        }
+    }
+    return null; // Let Puppeteer use bundled Chromium
+}
+
 const PUPPETEER_CONFIG = {
     // Optimized for headless environments like Replit
     headless: true,
+    executablePath: getBrowserExecutablePath(),
     args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -14,7 +46,6 @@ const PUPPETEER_CONFIG = {
         '--disable-accelerated-2d-canvas',
         '--no-first-run',
         '--no-zygote',
-        '--single-process',
         '--disable-gpu',
         '--disable-background-timer-throttling',
         '--disable-backgrounding-occluded-windows',
@@ -22,11 +53,36 @@ const PUPPETEER_CONFIG = {
         '--disable-renderer-backgrounding',
         '--disable-web-security',
         '--disable-features=VizDisplayCompositor',
-        '--memory-pressure-off'
+        '--disable-features=AudioServiceOutOfProcess',
+        '--disable-ipc-flooding-protection',
+        '--disable-background-networking',
+        '--disable-default-apps',
+        '--disable-extensions',
+        '--disable-sync',
+        '--disable-translate',
+        '--hide-scrollbars',
+        '--metrics-recording-only',
+        '--mute-audio',
+        '--no-default-browser-check',
+        '--safebrowsing-disable-auto-update',
+        '--disable-client-side-phishing-detection',
+        '--disable-component-update',
+        '--disable-hang-monitor',
+        '--disable-prompt-on-repost',
+        '--disable-domain-reliability',
+        '--memory-pressure-off',
+        '--max_old_space_size=4096',
+        '--disable-crash-reporter',
+        '--disable-in-process-stack-traces',
+        '--disable-logging',
+        '--disable-system-font-check',
+        '--log-level=3'
     ],
-    // Reduce memory usage
+    // Reduce memory usage and improve stability
     ignoreDefaultArgs: ['--disable-extensions'],
-    defaultViewport: null
+    defaultViewport: null,
+    timeout: 60000,
+    protocolTimeout: 60000
 };
 
 /**
