@@ -61,7 +61,12 @@ print_status "Step 1: Updating system packages..."
 sudo dnf update -y
 
 print_status "Step 2: Installing essential tools..."
-sudo dnf install -y curl wget git unzip tar htop
+sudo dnf install -y curl wget git unzip tar
+
+# Try to install htop, but don't fail if it's not available
+if ! sudo dnf install -y htop 2>/dev/null; then
+    print_warning "htop not available in repository, skipping..."
+fi
 
 print_status "Step 3: Installing Node.js 20..."
 if ! command -v node &> /dev/null; then

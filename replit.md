@@ -215,6 +215,7 @@ Production: Complete architecture ready for deployment with real Puppeteer integ
   - Handles all dependencies and system configuration
   - Creates production-ready service with monitoring
   - Includes security hardening and performance optimization
+  - Fixed Oracle Linux 9 compatibility issues (htop package availability)
 
 ## Changelog
 
