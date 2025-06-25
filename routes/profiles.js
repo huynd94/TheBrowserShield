@@ -2,6 +2,7 @@ const express = require('express');
 const ProfileService = require('../services/ProfileService');
 // Use MockBrowserService for Replit demo, switch to BrowserService for production
 const BrowserService = require('../services/MockBrowserService');
+const ProfileLogService = require('../services/ProfileLogService');
 const logger = require('../utils/logger');
 
 const router = express.Router();
@@ -30,6 +31,16 @@ router.get('/', async (req, res, next) => {
 router.post('/', async (req, res, next) => {
     try {
         const profile = await ProfileService.createProfile(req.body);
+        
+        // Log profile creation
+        await ProfileLogService.logActivity(profile.id, 'PROFILE_CREATED', {
+            profileName: profile.name,
+            ip: req.ip,
+            userAgent: req.get('User-Agent'),
+            hasProxy: !!profile.proxy,
+            spoofFingerprint: profile.spoofFingerprint
+        });
+        
         res.status(201).json({
             success: true,
             data: profile,
@@ -123,7 +134,20 @@ router.delete('/:id', async (req, res, next) => {
  */
 router.post('/:id/start', async (req, res, next) => {
     try {
-        const sessionInfo = await BrowserService.startBrowser(req.params.id);
+        const { autoNavigateUrl } = req.body;
+        const sessionInfo = await BrowserService.startBrowser(req.params.id, autoNavigateUrl);
+        
+        // Log browser start
+        await ProfileLogService.logActivity(req.params.id, 'BROWSER_STARTED', {
+            ip: req.ip,
+            userAgent: req.get('User-Agent'),
+            autoNavigateUrl: autoNavigateUrl || null,
+            sessionInfo: {
+                startTime: sessionInfo.startTime,
+                profileName: sessionInfo.profileName
+            }
+        });
+        
         res.json({
             success: true,
             data: sessionInfo,
@@ -147,6 +171,12 @@ router.post('/:id/stop', async (req, res, next) => {
                 message: 'No active browser session found for this profile'
             });
         }
+        
+        // Log browser stop
+        await ProfileLogService.logActivity(req.params.id, 'BROWSER_STOPPED', {
+            ip: req.ip,
+            userAgent: req.get('User-Agent')
+        });
         
         res.json({
             success: true,
@@ -215,6 +245,18 @@ router.post('/:id/navigate', async (req, res, next) => {
         }
         
         const result = await BrowserService.navigateToUrl(req.params.id, url);
+        
+        // Log navigation
+        await ProfileLogService.logActivity(req.params.id, 'NAVIGATION', {
+            url,
+            ip: req.ip,
+            userAgent: req.get('User-Agent'),
+            result: {
+                status: result.status,
+                title: result.title
+            }
+        });
+        
         res.json({
             success: true,
             data: result,
@@ -240,10 +282,97 @@ router.post('/:id/execute', async (req, res, next) => {
         }
         
         const result = await BrowserService.executeScript(req.params.id, script);
+        
+        // Log script execution
+        await ProfileLogService.logActivity(req.params.id, 'SCRIPT_EXECUTED', {
+            script: script.substring(0, 200) + (script.length > 200 ? '...' : ''),
+            ip: req.ip,
+            userAgent: req.get('User-Agent'),
+            resultType: typeof result
+        });
+        
         res.json({
             success: true,
             data: result,
             message: 'Script executed successfully'
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+/**
+ * GET /api/profiles/:id/logs
+ * Get activity logs for a profile
+ */
+router.get('/:id/logs', async (req, res, next) => {
+    try {
+        const limit = parseInt(req.query.limit) || 50;
+        const logs = await ProfileLogService.getProfileLogs(req.params.id, limit);
+        
+        res.json({
+            success: true,
+            data: logs,
+            count: logs.length
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+/**
+ * GET /api/profiles/system/logs
+ * Get system activity logs
+ */
+router.get('/system/logs', async (req, res, next) => {
+    try {
+        const limit = parseInt(req.query.limit) || 100;
+        const logs = await ProfileLogService.getActivityLogs(limit);
+        
+        res.json({
+            success: true,
+            data: logs,
+            count: logs.length
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+/**
+ * GET /api/profiles/system/stats
+ * Get system statistics
+ */
+router.get('/system/stats', async (req, res, next) => {
+    try {
+        const [profiles, activeSessions, logStats] = await Promise.all([
+            ProfileService.getAllProfiles(),
+            Promise.resolve(BrowserService.getAllActiveSessions()),
+            ProfileLogService.getLogStats()
+        ]);
+        
+        const stats = {
+            profiles: {
+                total: profiles.length,
+                withProxy: profiles.filter(p => p.proxy).length,
+                withStealth: profiles.filter(p => p.spoofFingerprint).length
+            },
+            sessions: {
+                active: activeSessions.length,
+                totalUptime: activeSessions.reduce((total, session) => total + (session.uptime || 0), 0)
+            },
+            logs: logStats,
+            system: {
+                uptime: process.uptime(),
+                memory: process.memoryUsage(),
+                nodeVersion: process.version,
+                platform: process.platform
+            }
+        };
+        
+        res.json({
+            success: true,
+            data: stats
         });
     } catch (error) {
         next(error);

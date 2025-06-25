@@ -9,9 +9,10 @@ class MockBrowserService {
     /**
      * Start browser with profile (Mock implementation for Replit demo)
      * @param {string} profileId - Profile ID
+     * @param {string} autoNavigateUrl - URL to navigate to after starting
      * @returns {Object} Session info
      */
-    async startBrowser(profileId) {
+    async startBrowser(profileId, autoNavigateUrl = null) {
         // Check if browser is already running for this profile
         if (this.activeSessions.has(profileId)) {
             throw new Error(`Browser is already running for profile ${profileId}`);
@@ -29,14 +30,18 @@ class MockBrowserService {
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         // Store mock session
+        const defaultUrl = 'https://httpbin.org/headers';
+        const finalUrl = autoNavigateUrl || defaultUrl;
+        
         const session = {
             profile,
             startTime: new Date().toISOString(),
             status: 'running',
             mockData: {
-                currentUrl: 'https://httpbin.org/headers',
-                title: 'httpbin.org - Headers Test',
-                sessionId: `mock-session-${Date.now()}`
+                currentUrl: finalUrl,
+                title: autoNavigateUrl ? `Mock Page - ${new URL(autoNavigateUrl).hostname}` : 'httpbin.org - Headers Test',
+                sessionId: `mock-session-${Date.now()}`,
+                autoNavigated: !!autoNavigateUrl
             }
         };
         
@@ -64,6 +69,7 @@ class MockBrowserService {
             mockFeatures: {
                 antiDetection: profile.spoofFingerprint ? 'enabled' : 'disabled',
                 proxySupport: profile.proxy ? 'configured' : 'not configured',
+                autoNavigated: session.mockData.autoNavigated,
                 fingerprintSpoofing: [
                     'webdriver property hidden',
                     'navigator properties spoofed',

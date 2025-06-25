@@ -10,9 +10,10 @@ class BrowserService {
     /**
      * Start browser with profile
      * @param {string} profileId - Profile ID
+     * @param {string} autoNavigateUrl - URL to navigate to after starting
      * @returns {Object} Session info
      */
-    async startBrowser(profileId) {
+    async startBrowser(profileId, autoNavigateUrl = null) {
         // Check if browser is already running for this profile
         if (this.activeSessions.has(profileId)) {
             throw new Error(`Browser is already running for profile ${profileId}`);
@@ -47,8 +48,9 @@ class BrowserService {
                 this.activeSessions.delete(profileId);
             });
 
-            // Navigate to a test page to verify everything works
-            await page.goto('https://httpbin.org/headers', { 
+            // Navigate to specified URL or default test page
+            const targetUrl = autoNavigateUrl || 'https://httpbin.org/headers';
+            await page.goto(targetUrl, { 
                 waitUntil: 'networkidle2',
                 timeout: 30000 
             });

@@ -93,6 +93,10 @@ const PUPPETEER_CONFIG = {
 async function createBrowserWithProfile(profile) {
     const config = { ...PUPPETEER_CONFIG };
     
+    // Add separate user data directory for each profile
+    const userDataDir = `./data/browser-profiles/${profile.id}`;
+    config.userDataDir = userDataDir;
+    
     // Add proxy configuration if provided
     if (profile.proxy && profile.proxy.host && profile.proxy.port) {
         const proxyUrl = `${profile.proxy.type || 'http'}://${profile.proxy.host}:${profile.proxy.port}`;
