@@ -250,8 +250,9 @@ sudo firewall-cmd --reload
 
 ## Hỗ Trợ
 
-- **Project URL**: https://replit.com/@ngocdm2006/BrowserShield
+- **Project URL**: https://github.com/huynd94/TheBrowserShield
 - **Issues**: Báo lỗi tại GitHub repository
+- **Original Demo**: https://replit.com/@ngocdm2006/BrowserShield
 - **Documentation**: Xem file DEPLOYMENT.md để biết thêm chi tiết
 
 ## Changelog

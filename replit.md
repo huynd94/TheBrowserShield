@@ -211,7 +211,7 @@ Production: Complete architecture ready for deployment with real Puppeteer integ
 
 - June 25, 2025: Complete anti-detect browser profile manager implementation
 - **Auto-Installer Created**: Full automated installation for Oracle Linux 9
-  - Direct integration with Replit project URL
+  - GitHub repository integration: https://github.com/huynd94/TheBrowserShield
   - Handles all dependencies and system configuration
   - Creates production-ready service with monitoring
   - Includes security hardening and performance optimization

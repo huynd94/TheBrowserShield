@@ -79,9 +79,9 @@ sudo su - browserapp
 ## Bước 5: Clone và Setup Application
 
 ```bash
-# Clone your repository (hoặc upload files)
+# Clone repository
 cd /home/browserapp
-git clone <your-repository-url> anti-detect-browser
+git clone https://github.com/huynd94/TheBrowserShield.git anti-detect-browser
 # Hoặc upload files bằng scp/rsync
 
 cd anti-detect-browser

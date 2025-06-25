@@ -134,7 +134,7 @@ if [ -f "browsershield.zip" ]; then
         # Try alternative download method using git if zip fails
         print_warning "Zip extraction failed, trying git clone..."
         cd $APP_DIR
-        sudo -u browserapp git clone https://github.com/ngocdm2006/BrowserShield.git .
+        sudo -u browserapp git clone https://github.com/huynd94/TheBrowserShield.git .
     else
         # Copy extracted files to app directory
         print_status "Copying files to application directory..."
@@ -145,7 +145,7 @@ else
     # Fallback: try direct git clone
     print_warning "Download failed, trying alternative method..."
     cd $APP_DIR
-    sudo -u browserapp git clone https://github.com/ngocdm2006/BrowserShield.git .
+    sudo -u browserapp git clone https://github.com/huynd94/TheBrowserShield.git .
 fi
 
 # Clean up temp directory

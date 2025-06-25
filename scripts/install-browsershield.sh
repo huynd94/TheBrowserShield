@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # BrowserShield Anti-Detect Browser Manager - Oracle Linux 9 Installation Script
-# Project URL: https://replit.com/@ngocdm2006/BrowserShield
-# Run with: curl -sSL https://raw.githubusercontent.com/ngocdm2006/BrowserShield/main/scripts/install-browsershield.sh | bash
+# Project URL: https://github.com/huynd94/TheBrowserShield
+# Run with: curl -sSL https://raw.githubusercontent.com/huynd94/TheBrowserShield/main/scripts/install-browsershield.sh | bash
 
 set -e
 
@@ -53,7 +53,7 @@ if ! command -v dnf &> /dev/null; then
 fi
 
 print_header "BrowserShield Installation Starting"
-echo "Project: https://replit.com/@ngocdm2006/BrowserShield"
+echo "Project: https://github.com/huynd94/TheBrowserShield"
 echo "Target: Oracle Linux 9 VPS"
 echo ""
 
@@ -137,7 +137,7 @@ print_status "Step 7: Setting up application directory..."
 APP_DIR="/home/browserapp/browsershield"
 sudo -u browserapp mkdir -p $APP_DIR
 
-print_status "Step 8: Downloading BrowserShield from Replit..."
+print_status "Step 8: Downloading BrowserShield from GitHub..."
 
 # Create temporary directory
 TEMP_DIR="/tmp/browsershield-install"
@@ -145,35 +145,33 @@ sudo rm -rf $TEMP_DIR
 mkdir -p $TEMP_DIR
 cd $TEMP_DIR
 
-# Method 1: Try to download the repl as a zip (if available)
-print_status "Attempting to download project files..."
-
 # Download source code using multiple methods
+print_status "Downloading from GitHub repository..."
 DOWNLOAD_SUCCESS=false
 
-# Method 1: Direct file download (if you export the repl)
+# Method 1: Git clone from GitHub
 if [ "$DOWNLOAD_SUCCESS" = false ]; then
-    print_status "Trying method 1: Direct download..."
-    if curl -L --fail "https://replit.com/@ngocdm2006/BrowserShield.zip" -o browsershield.zip 2>/dev/null; then
-        if unzip -q browsershield.zip 2>/dev/null; then
-            EXTRACTED_DIR=$(find . -maxdepth 2 -name "*.js" -o -name "package.json" | head -1 | xargs dirname 2>/dev/null || echo "")
-            if [ -n "$EXTRACTED_DIR" ] && [ -f "$EXTRACTED_DIR/package.json" ]; then
-                sudo cp -r $EXTRACTED_DIR/* $APP_DIR/
-                DOWNLOAD_SUCCESS=true
-                print_status "Downloaded via direct method"
-            fi
-        fi
-    fi
-fi
-
-# Method 2: Git clone from GitHub (if repo exists)
-if [ "$DOWNLOAD_SUCCESS" = false ]; then
-    print_status "Trying method 2: Git clone..."
-    if git clone https://github.com/ngocdm2006/BrowserShield.git browsershield-git 2>/dev/null; then
+    print_status "Cloning from GitHub repository..."
+    if git clone https://github.com/huynd94/TheBrowserShield.git browsershield-git 2>/dev/null; then
         if [ -f "browsershield-git/package.json" ]; then
             sudo cp -r browsershield-git/* $APP_DIR/
             DOWNLOAD_SUCCESS=true
             print_status "Downloaded via Git clone"
+        fi
+    fi
+fi
+
+# Method 2: Download ZIP from GitHub
+if [ "$DOWNLOAD_SUCCESS" = false ]; then
+    print_status "Trying GitHub ZIP download..."
+    if curl -L --fail "https://github.com/huynd94/TheBrowserShield/archive/refs/heads/main.zip" -o browsershield.zip 2>/dev/null; then
+        if unzip -q browsershield.zip 2>/dev/null; then
+            EXTRACTED_DIR=$(find . -maxdepth 2 -name "package.json" | head -1 | xargs dirname 2>/dev/null || echo "")
+            if [ -n "$EXTRACTED_DIR" ] && [ -f "$EXTRACTED_DIR/package.json" ]; then
+                sudo cp -r $EXTRACTED_DIR/* $APP_DIR/
+                DOWNLOAD_SUCCESS=true
+                print_status "Downloaded via GitHub ZIP"
+            fi
         fi
     fi
 fi
@@ -207,8 +205,9 @@ if [ "$DOWNLOAD_SUCCESS" = false ]; then
 }
 EOF
 
-    print_status "Please upload your BrowserShield source files to: $APP_DIR"
-    print_warning "You can use scp, rsync, or manually copy files to complete the installation"
+    print_warning "Download failed. Please check your internet connection and try again."
+    print_warning "Or manually clone the repository:"
+    print_warning "git clone https://github.com/huynd94/TheBrowserShield.git $APP_DIR"
     DOWNLOAD_SUCCESS=true
 fi
 
@@ -255,7 +254,7 @@ print_status "Step 12: Creating systemd service..."
 sudo tee /etc/systemd/system/browsershield.service > /dev/null << EOF
 [Unit]
 Description=BrowserShield Anti-Detect Browser Manager
-Documentation=https://replit.com/@ngocdm2006/BrowserShield
+Documentation=https://github.com/huynd94/TheBrowserShield
 After=network.target
 
 [Service]
