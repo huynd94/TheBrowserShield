@@ -196,11 +196,25 @@ Production: Complete architecture ready for deployment with real Puppeteer integ
 ### Oracle Linux 9 VPS Deployment
 - Comprehensive deployment guide created (DEPLOYMENT.md)
 - Automated installation script (scripts/install-oracle-linux.sh)
+- **BrowserShield Auto-Installer** (scripts/install-browsershield.sh)
+  - One-line installation command
+  - Automatic download from Replit project
+  - Complete system setup and configuration
+  - Production-ready service deployment
 - Production deployment script (scripts/deploy.sh)
 - System monitoring script (scripts/monitor.sh)
 - SystemD service configuration
 - Nginx reverse proxy setup
 - Security hardening recommendations
+
+## Changelog
+
+- June 25, 2025: Complete anti-detect browser profile manager implementation
+- **Auto-Installer Created**: Full automated installation for Oracle Linux 9
+  - Direct integration with Replit project URL
+  - Handles all dependencies and system configuration
+  - Creates production-ready service with monitoring
+  - Includes security hardening and performance optimization
 
 ## Changelog
 

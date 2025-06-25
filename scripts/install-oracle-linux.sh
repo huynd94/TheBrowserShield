@@ -111,21 +111,45 @@ APP_DIR="/home/browserapp/anti-detect-browser"
 # Create app directory if it doesn't exist
 sudo -u browserapp mkdir -p $APP_DIR
 
-# Get the source files (you'll need to modify this based on how you distribute your app)
-print_status "Step 8: Installing application files..."
+# Download application files from Replit
+print_status "Step 8: Downloading application files from Replit..."
 
-# Option 1: If you have the files in current directory
-if [ -f "package.json" ]; then
-    print_status "Copying application files from current directory..."
-    sudo cp -r . $APP_DIR/
-    sudo chown -R browserapp:browserapp $APP_DIR
+# Create temporary directory for download
+TEMP_DIR="/tmp/browsershield-download"
+mkdir -p $TEMP_DIR
+
+# Download project as zip from Replit
+print_status "Downloading BrowserShield project..."
+curl -L "https://replit.com/@ngocdm2006/BrowserShield.zip" -o $TEMP_DIR/browsershield.zip
+
+# Extract files
+cd $TEMP_DIR
+if [ -f "browsershield.zip" ]; then
+    unzip -q browsershield.zip
+    
+    # Find the extracted directory (it might have a different name)
+    EXTRACTED_DIR=$(find . -maxdepth 1 -type d -name "*BrowserShield*" | head -1)
+    
+    if [ -z "$EXTRACTED_DIR" ]; then
+        # Try alternative download method using git if zip fails
+        print_warning "Zip extraction failed, trying git clone..."
+        cd $APP_DIR
+        sudo -u browserapp git clone https://github.com/ngocdm2006/BrowserShield.git .
+    else
+        # Copy extracted files to app directory
+        print_status "Copying files to application directory..."
+        sudo cp -r $EXTRACTED_DIR/* $APP_DIR/
+        sudo chown -R browserapp:browserapp $APP_DIR
+    fi
 else
-    # Option 2: Download from repository
-    print_warning "No package.json found in current directory."
-    print_warning "Please manually copy your application files to $APP_DIR"
-    print_warning "Or clone from your git repository:"
-    echo "  sudo -u browserapp git clone <your-repo-url> $APP_DIR"
+    # Fallback: try direct git clone
+    print_warning "Download failed, trying alternative method..."
+    cd $APP_DIR
+    sudo -u browserapp git clone https://github.com/ngocdm2006/BrowserShield.git .
 fi
+
+# Clean up temp directory
+rm -rf $TEMP_DIR
 
 print_status "Step 9: Installing NPM dependencies..."
 if [ -f "$APP_DIR/package.json" ]; then
