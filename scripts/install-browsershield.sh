@@ -83,32 +83,46 @@ print_status "Node.js version: $NODE_VERSION"
 print_status "NPM version: $NPM_VERSION"
 
 print_status "Step 4: Installing Chrome dependencies..."
+
+# Essential packages that are definitely available
 sudo dnf install -y \
     alsa-lib \
     atk \
     cups-libs \
     gtk3 \
-    ipa-gothic-fonts \
     libdrm \
-    libxcomposite \
-    libxdamage \
-    libxrandr \
-    libxss \
-    libxtst \
     pango \
-    xorg-x11-fonts-100dpi \
-    xorg-x11-fonts-75dpi \
-    xorg-x11-fonts-cyrillic \
-    xorg-x11-fonts-misc \
-    xorg-x11-fonts-Type1 \
-    xorg-x11-utils \
     liberation-fonts \
     nss \
-    gconf-service \
-    libgconf-2-4 \
-    libxfont \
     cyrus-sasl-devel \
     libnsl
+
+# Try to install optional packages, skip if not available
+OPTIONAL_PACKAGES=(
+    "ipa-gothic-fonts"
+    "libxcomposite" 
+    "libxdamage"
+    "libxrandr"
+    "libxss"
+    "libxtst"
+    "xorg-x11-fonts-100dpi"
+    "xorg-x11-fonts-75dpi" 
+    "xorg-x11-fonts-cyrillic"
+    "xorg-x11-fonts-misc"
+    "xorg-x11-fonts-Type1"
+    "xorg-x11-utils"
+    "gconf-service"
+    "libgconf-2-4"
+    "libxfont"
+)
+
+for package in "${OPTIONAL_PACKAGES[@]}"; do
+    if sudo dnf install -y "$package" 2>/dev/null; then
+        print_status "Installed: $package"
+    else
+        print_warning "Package not found, skipping: $package"
+    fi
+done
 
 print_status "Step 5: Installing Google Chrome..."
 if ! command -v google-chrome-stable &> /dev/null; then
