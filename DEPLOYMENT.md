@@ -1,178 +1,391 @@
-# Production Deployment Guide
+# Hướng Dẫn Deploy Anti-Detect Browser Manager lên Oracle Linux 9 VPS
 
-## Current Status
-This Replit version uses a **Mock Browser Service** for demonstration purposes because Puppeteer requires specific system-level dependencies that may not be available in all containerized environments.
+## Yêu Cầu Hệ Thống
 
-## Mock vs Production Differences
+- Oracle Linux 9 VPS với ít nhất 2GB RAM và 20GB storage
+- Root access hoặc sudo privileges
+- Port 5000 mở cho external access
+- Internet connection để download dependencies
 
-### Mock Implementation (Current - Replit Demo)
-- ✅ All API endpoints work perfectly
-- ✅ Profile management (CRUD operations)
-- ✅ Session management and tracking
-- ✅ Demonstrates anti-detection features
-- ⚠️ Browser operations are simulated (no real browser launches)
+## Bước 1: Cập Nhật Hệ Thống
 
-### Production Implementation (Real Deployment)
-- ✅ Real Puppeteer browser automation
-- ✅ Actual fingerprint spoofing and anti-detection
-- ✅ Real proxy support and IP rotation
-- ✅ Actual webpage interaction and scraping
-
-## How to Deploy for Production
-
-### 1. VPS/Dedicated Server Deployment
-For real browser automation, deploy on:
-- **Ubuntu/Debian VPS** (DigitalOcean, AWS EC2, Linode)
-- **Docker container** with full Chrome/Chromium support
-- **Dedicated server** with sufficient RAM (4GB+ recommended)
-
-### 2. Required System Dependencies
 ```bash
-# Ubuntu/Debian
-sudo apt update
-sudo apt install -y \
-    chromium-browser \
-    fonts-liberation \
-    libappindicator3-1 \
-    libasound2 \
-    libatk-bridge2.0-0 \
-    libdrm2 \
-    libgtk-3-0 \
-    libnspr4 \
-    libnss3 \
-    libxss1 \
-    libxtst6 \
-    xdg-utils
+# Update system packages
+sudo dnf update -y
+
+# Install essential tools
+sudo dnf install -y curl wget git unzip
 ```
 
-### 3. Production Configuration Changes
+## Bước 2: Cài Đặt Node.js 20
 
-Replace the mock service import in `routes/profiles.js`:
-```javascript
-// Change this line:
-const BrowserService = require('../services/MockBrowserService');
-
-// To this:
-const BrowserService = require('../services/BrowserService');
-```
-
-### 4. Environment Variables for Production
 ```bash
-NODE_ENV=production
-PORT=8000
-LOG_LEVEL=info
-CHROME_PATH=/usr/bin/chromium-browser  # or your Chrome path
-MAX_BROWSER_INSTANCES=5
-BROWSER_TIMEOUT=60000
+# Install Node.js repository
+curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
+
+# Install Node.js and npm
+sudo dnf install -y nodejs
+
+# Verify installation
+node --version
+npm --version
 ```
 
-### 5. Docker Production Setup
-```dockerfile
-FROM node:18-slim
+## Bước 3: Cài Đặt Dependencies cho Puppeteer
 
+```bash
 # Install Chrome dependencies
-RUN apt-get update && apt-get install -y \
-    chromium \
-    fonts-liberation \
-    libappindicator3-1 \
-    libasound2 \
-    libatk-bridge2.0-0 \
-    libdrm2 \
-    libgtk-3-0 \
-    libnspr4 \
-    libnss3 \
-    libxss1 \
-    libxtst6 \
-    xdg-utils \
-    --no-install-recommends \
-    && rm -rf /var/lib/apt/lists/*
+sudo dnf install -y \
+    alsa-lib \
+    atk \
+    cups-libs \
+    gtk3 \
+    ipa-gothic-fonts \
+    libdrm \
+    libxcomposite \
+    libxdamage \
+    libxrandr \
+    libxss \
+    libxtst \
+    pango \
+    xorg-x11-fonts-100dpi \
+    xorg-x11-fonts-75dpi \
+    xorg-x11-fonts-cyrillic \
+    xorg-x11-fonts-misc \
+    xorg-x11-fonts-Type1 \
+    xorg-x11-utils
 
-WORKDIR /app
-COPY . .
-RUN npm install
-
-EXPOSE 8000
-CMD ["node", "server.js"]
+# Install additional dependencies
+sudo dnf install -y \
+    liberation-fonts \
+    nss \
+    gconf-service \
+    libgconf-2-4 \
+    libxfont \
+    cyrus-sasl-devel \
+    libnsl
 ```
 
-### 6. Performance Optimizations for Production
-
-#### Memory Management
-- Set `--max-old-space-size=4096` for Node.js
-- Limit concurrent browser instances
-- Implement browser session recycling
-
-#### Security Considerations
-- Use rate limiting middleware
-- Implement API authentication
-- Sanitize user inputs for script execution
-- Use HTTPS in production
-
-### 7. Anti-Detection Enhancements for Production
-
-The current implementation includes basic anti-detection features. For production, consider adding:
-
-#### Advanced Fingerprint Spoofing
-- Canvas fingerprint randomization
-- WebGL fingerprint modification
-- Audio context fingerprinting
-- Screen resolution spoofing
-- Hardware concurrency randomization
-
-#### Behavioral Patterns
-- Random mouse movements
-- Human-like typing patterns
-- Variable page load delays
-- Realistic scroll behaviors
-
-### 8. Monitoring and Logging
-- Set up proper logging with Winston or similar
-- Monitor browser memory usage
-- Track session success rates
-- Alert on browser crash patterns
-
-## Testing the Current Mock Implementation
-
-Even though this is a mock version, you can test all API functionality:
+## Bước 4: Tạo User cho Application
 
 ```bash
-# Create a new profile
-curl -X POST http://localhost:5000/api/profiles \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Test Profile",
-    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-    "timezone": "America/New_York",
-    "viewport": {"width": 1920, "height": 1080},
-    "spoofFingerprint": true
-  }'
+# Create dedicated user for the application
+sudo useradd -m -s /bin/bash browserapp
 
-# Start mock browser
-curl -X POST http://localhost:5000/api/profiles/[PROFILE_ID]/start
-
-# Check session status
-curl -X GET http://localhost:5000/api/profiles/[PROFILE_ID]/status
-
-# Navigate to URL (mock)
-curl -X POST http://localhost:5000/api/profiles/[PROFILE_ID]/navigate \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://example.com"}'
-
-# Execute script (mock)
-curl -X POST http://localhost:5000/api/profiles/[PROFILE_ID]/execute \
-  -H "Content-Type: application/json" \
-  -d '{"script": "navigator.userAgent"}'
-
-# Stop browser
-curl -X POST http://localhost:5000/api/profiles/[PROFILE_ID]/stop
+# Switch to the new user
+sudo su - browserapp
 ```
 
-## Migration Path
+## Bước 5: Clone và Setup Application
 
-1. **Test the API** with the current mock implementation
-2. **Deploy to production server** with real system dependencies
-3. **Switch to real BrowserService** by changing the import
-4. **Add monitoring and security** features
-5. **Scale horizontally** as needed
+```bash
+# Clone your repository (hoặc upload files)
+cd /home/browserapp
+git clone <your-repository-url> anti-detect-browser
+# Hoặc upload files bằng scp/rsync
 
-The architecture is designed to make this transition seamless - only the browser service implementation changes, all other components remain the same.
+cd anti-detect-browser
+
+# Install npm dependencies
+npm install
+
+# Set proper permissions
+chmod +x server.js
+```
+
+## Bước 6: Cấu Hình Environment Variables
+
+```bash
+# Create environment file
+cat > .env << 'EOF'
+PORT=5000
+NODE_ENV=production
+API_TOKEN=your-secure-api-token-here
+ENABLE_RATE_LIMIT=true
+PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
+EOF
+
+# Set secure permissions for env file
+chmod 600 .env
+```
+
+## Bước 7: Cài Đặt Google Chrome
+
+```bash
+# Add Google Chrome repository
+sudo tee /etc/yum.repos.d/google-chrome.repo << 'EOF'
+[google-chrome]
+name=google-chrome
+baseurl=http://dl.google.com/linux/chrome/rpm/stable/x86_64
+enabled=1
+gpgcheck=1
+gpgkey=https://dl.google.com/linux/linux_signing_key.pub
+EOF
+
+# Install Google Chrome
+sudo dnf install -y google-chrome-stable
+
+# Verify Chrome installation
+google-chrome-stable --version
+```
+
+## Bước 8: Switch sang Production Mode
+
+```bash
+# Edit server.js để sử dụng BrowserService thay vì MockBrowserService
+cd /home/browserapp/anti-detect-browser
+
+# Backup current routes file
+cp routes/profiles.js routes/profiles.js.backup
+
+# Update to use real BrowserService
+sed -i "s/require('..\/services\/MockBrowserService')/require('..\/services\/BrowserService')/g" routes/profiles.js
+
+echo "Switched to production BrowserService"
+```
+
+## Bước 9: Tạo SystemD Service
+
+```bash
+# Exit from browserapp user back to root
+exit
+
+# Create systemd service file
+sudo tee /etc/systemd/system/anti-detect-browser.service << 'EOF'
+[Unit]
+Description=Anti-Detect Browser Profile Manager
+Documentation=https://github.com/your-repo
+After=network.target
+
+[Service]
+Type=simple
+User=browserapp
+WorkingDirectory=/home/browserapp/anti-detect-browser
+Environment=PATH=/usr/bin:/usr/local/bin
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=10
+KillMode=mixed
+KillSignal=SIGINT
+TimeoutStopSec=5
+SyslogIdentifier=anti-detect-browser
+StandardOutput=journal
+StandardError=journal
+
+# Security settings
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/home/browserapp/anti-detect-browser
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Reload systemd and enable service
+sudo systemctl daemon-reload
+sudo systemctl enable anti-detect-browser.service
+```
+
+## Bước 10: Cấu Hình Firewall
+
+```bash
+# Open port 5000 for the application
+sudo firewall-cmd --permanent --add-port=5000/tcp
+sudo firewall-cmd --reload
+
+# Verify firewall rules
+sudo firewall-cmd --list-all
+```
+
+## Bước 11: Start Application
+
+```bash
+# Start the service
+sudo systemctl start anti-detect-browser.service
+
+# Check service status
+sudo systemctl status anti-detect-browser.service
+
+# View logs
+sudo journalctl -u anti-detect-browser.service -f
+```
+
+## Bước 12: Setup Nginx Reverse Proxy (Optional)
+
+```bash
+# Install Nginx
+sudo dnf install -y nginx
+
+# Create Nginx configuration
+sudo tee /etc/nginx/conf.d/anti-detect-browser.conf << 'EOF'
+server {
+    listen 80;
+    server_name your-domain.com;  # Thay bằng domain của bạn
+
+    location / {
+        proxy_pass http://localhost:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 300s;
+        proxy_connect_timeout 75s;
+    }
+}
+EOF
+
+# Enable and start Nginx
+sudo systemctl enable nginx
+sudo systemctl start nginx
+
+# Open HTTP port
+sudo firewall-cmd --permanent --add-service=http
+sudo firewall-cmd --reload
+```
+
+## Bước 13: Test Deployment
+
+```bash
+# Test local connection
+curl http://localhost:5000/health
+
+# Test external connection (thay YOUR_VPS_IP bằng IP thực)
+curl http://YOUR_VPS_IP:5000/health
+
+# Test web interface
+curl -s http://YOUR_VPS_IP:5000/ | grep "Anti-Detect"
+```
+
+## Bước 14: Monitoring và Logs
+
+```bash
+# Monitor service status
+sudo systemctl status anti-detect-browser.service
+
+# View real-time logs
+sudo journalctl -u anti-detect-browser.service -f
+
+# View recent logs
+sudo journalctl -u anti-detect-browser.service --since "1 hour ago"
+
+# Check resource usage
+htop
+```
+
+## Maintenance Commands
+
+```bash
+# Restart service
+sudo systemctl restart anti-detect-browser.service
+
+# Stop service
+sudo systemctl stop anti-detect-browser.service
+
+# Update application
+cd /home/browserapp/anti-detect-browser
+git pull origin main
+npm install
+sudo systemctl restart anti-detect-browser.service
+
+# Backup data
+tar -czf /home/browserapp/backup-$(date +%Y%m%d).tar.gz /home/browserapp/anti-detect-browser/data/
+```
+
+## Troubleshooting
+
+### Chrome không khởi chạy được:
+```bash
+# Check Chrome installation
+google-chrome-stable --version
+
+# Test Chrome with debug info
+google-chrome-stable --headless --no-sandbox --disable-dev-shm-usage --dump-dom https://example.com
+```
+
+### Service không start:
+```bash
+# Check detailed error logs
+sudo journalctl -u anti-detect-browser.service -n 50
+
+# Check file permissions
+ls -la /home/browserapp/anti-detect-browser/
+```
+
+### Port không accessible:
+```bash
+# Check if port is listening
+netstat -tlnp | grep :5000
+
+# Check firewall status
+sudo firewall-cmd --list-all
+```
+
+### Memory issues:
+```bash
+# Check system resources
+free -h
+df -h
+
+# Adjust Chrome arguments trong config/puppeteer.js:
+# Thêm: '--memory-pressure-off', '--max_old_space_size=512'
+```
+
+## Security Recommendations
+
+1. **Change default API token:**
+   ```bash
+   # Generate secure token
+   openssl rand -base64 32
+   # Update .env file với token mới
+   ```
+
+2. **Setup SSL với Let's Encrypt:**
+   ```bash
+   sudo dnf install -y certbot python3-certbot-nginx
+   sudo certbot --nginx -d your-domain.com
+   ```
+
+3. **Regular updates:**
+   ```bash
+   # Create update script
+   cat > /home/browserapp/update.sh << 'EOF'
+   #!/bin/bash
+   cd /home/browserapp/anti-detect-browser
+   git pull origin main
+   npm install
+   sudo systemctl restart anti-detect-browser.service
+   EOF
+   chmod +x /home/browserapp/update.sh
+   ```
+
+4. **Backup automation:**
+   ```bash
+   # Add to crontab
+   echo "0 2 * * * tar -czf /home/browserapp/backup-\$(date +\%Y\%m\%d).tar.gz /home/browserapp/anti-detect-browser/data/" | crontab -
+   ```
+
+## Performance Optimization
+
+1. **Tăng file descriptor limits:**
+   ```bash
+   echo "browserapp soft nofile 65536" | sudo tee -a /etc/security/limits.conf
+   echo "browserapp hard nofile 65536" | sudo tee -a /etc/security/limits.conf
+   ```
+
+2. **Configure swap nếu RAM thấp:**
+   ```bash
+   sudo fallocate -l 2G /swapfile
+   sudo chmod 600 /swapfile
+   sudo mkswap /swapfile
+   sudo swapon /swapfile
+   echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+   ```
+
+Sau khi hoàn thành các bước trên, ứng dụng sẽ chạy tại `http://YOUR_VPS_IP:5000` với đầy đủ chức năng anti-detect browser management.
