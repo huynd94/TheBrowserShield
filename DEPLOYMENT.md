@@ -1,4 +1,4 @@
-# Hướng Dẫn Deploy Anti-Detect Browser Manager lên Oracle Linux 9 VPS
+# Hướng Dẫn Deploy & Update BrowserShield trên Oracle Linux 9 VPS
 
 ## Yêu Cầu Hệ Thống
 
@@ -279,23 +279,76 @@ sudo journalctl -u anti-detect-browser.service --since "1 hour ago"
 htop
 ```
 
+## 🔄 System Updates
+
+### Quick Update (Recommended)
+```bash
+# Automated update with backup and validation
+curl -sSL https://raw.githubusercontent.com/huynd94/TheBrowserShield/main/scripts/update-system.sh | bash
+```
+
+### Manual Update Process
+```bash
+# Stop service
+sudo systemctl stop browsershield.service
+
+# Backup current installation
+cp -r /home/opc/browsershield /home/opc/browsershield-backup-$(date +%Y%m%d)
+
+# Download latest code
+cd /tmp
+git clone https://github.com/huynd94/TheBrowserShield.git browsershield-new
+
+# Preserve user data
+cp /home/opc/browsershield/data/* /tmp/browsershield-new/data/
+cp /home/opc/browsershield/.env /tmp/browsershield-new/
+
+# Replace installation
+rm -rf /home/opc/browsershield
+mv /tmp/browsershield-new /home/opc/browsershield
+cd /home/opc/browsershield
+
+# Update dependencies
+npm install --production
+
+# Start service
+sudo systemctl start browsershield.service
+```
+
+### Update Features
+- Automatic backup before updates
+- Data preservation (profiles, proxy pool, mode config)
+- Syntax validation before restart
+- Rollback capability on failures
+- Health check verification
+
+### Cleanup Unused Scripts
+```bash
+cd /home/opc/browsershield/scripts
+./cleanup-unused-scripts.sh
+```
+
 ## Maintenance Commands
 
 ```bash
 # Restart service
-sudo systemctl restart anti-detect-browser.service
+sudo systemctl restart browsershield.service
 
 # Stop service
-sudo systemctl stop anti-detect-browser.service
+sudo systemctl stop browsershield.service
 
-# Update application
-cd /home/browserapp/anti-detect-browser
-git pull origin main
-npm install
-sudo systemctl restart anti-detect-browser.service
+# Monitor system health
+cd /home/opc/browsershield/scripts
+./monitor.sh
 
-# Backup data
-tar -czf /home/browserapp/backup-$(date +%Y%m%d).tar.gz /home/browserapp/anti-detect-browser/data/
+# Check service status
+sudo systemctl status browsershield.service
+
+# View logs
+sudo journalctl -u browsershield.service -f
+
+# Backup data manually
+tar -czf /home/opc/backup-$(date +%Y%m%d).tar.gz /home/opc/browsershield/data/
 ```
 
 ## Troubleshooting

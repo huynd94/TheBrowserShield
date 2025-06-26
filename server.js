@@ -64,6 +64,27 @@ app.get('/health', (req, res) => {
     });
 });
 
+// Serve documentation files
+app.get('/INSTALL.md', (req, res) => {
+    res.sendFile(path.join(__dirname, 'INSTALL.md'));
+});
+
+app.get('/HUONG_DAN_UPDATE.md', (req, res) => {
+    res.sendFile(path.join(__dirname, 'HUONG_DAN_UPDATE.md'));
+});
+
+app.get('/UPDATE_GUIDE.md', (req, res) => {
+    res.sendFile(path.join(__dirname, 'UPDATE_GUIDE.md'));
+});
+
+app.get('/DEPLOYMENT.md', (req, res) => {
+    res.sendFile(path.join(__dirname, 'DEPLOYMENT.md'));
+});
+
+app.get('/README.md', (req, res) => {
+    res.sendFile(path.join(__dirname, 'README.md'));
+});
+
 // Root endpoint with web interface
 app.get('/', (req, res) => {
     res.send(`

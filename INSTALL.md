@@ -1,262 +1,134 @@
-# 🛡️ BrowserShield - Cài Đặt Tự Động
+# 🚀 BrowserShield - Hướng Dẫn Cài Đặt & Cập Nhật
 
-## Cài Đặt Nhanh (Khuyến Nghị)
+## Cài Đặt Mới (Oracle Linux 9)
 
-### Oracle Linux 9 / RHEL / CentOS Stream
-
+### Cách 1: Cài đặt tự động (Khuyến nghị)
 ```bash
-# Cài đặt một lệnh duy nhất
-curl -sSL https://raw.githubusercontent.com/ngocdm2006/BrowserShield/main/scripts/install-browsershield.sh | bash
+curl -sSL https://raw.githubusercontent.com/huynd94/TheBrowserShield/main/scripts/install-browsershield-fixed-robust.sh | bash
 ```
 
-**Hoặc tải về và chạy:**
-
+### Cách 2: Cài đặt thủ công
 ```bash
-# Tải script
-wget https://raw.githubusercontent.com/ngocdm2006/BrowserShield/main/scripts/install-browsershield.sh
-
-# Cấp quyền thực thi
-chmod +x install-browsershield.sh
-
-# Chạy cài đặt
-./install-browsershield.sh
+wget https://raw.githubusercontent.com/huynd94/TheBrowserShield/main/scripts/install-browsershield-fixed-robust.sh
+chmod +x install-browsershield-fixed-robust.sh
+./install-browsershield-fixed-robust.sh
 ```
 
-## Yêu Cầu Hệ Thống
+## 🔄 Cập Nhật Hệ Thống
 
-- **OS**: Oracle Linux 9, RHEL 9, CentOS Stream 9
-- **RAM**: Tối thiểu 2GB (khuyến nghị 4GB+)
-- **Storage**: 10GB trống
-- **Network**: Internet connection để download dependencies
-- **User**: Non-root user với sudo privileges
-
-## Những Gì Script Sẽ Làm
-
-### 🔧 Cài Đặt Dependencies
-- Node.js 20.x
-- Google Chrome Stable
-- System libraries cho Puppeteer
-- Development tools
-
-### 👤 Tạo User & Security
-- Tạo user `browserapp` riêng biệt
-- Cấu hình file permissions
-- Tạo environment variables an toàn
-- Generate API token tự động
-
-### 📦 Download & Setup Application
-- Download source code từ Replit
-- Cài đặt NPM dependencies
-- Switch sang production mode
-- Cấu hình cho VPS environment
-
-### 🚀 Service Configuration
-- Tạo SystemD service: `browsershield.service`
-- Auto-start on boot
-- Auto-restart on failure
-- Proper logging setup
-
-### 🔒 Security & Firewall
-- Mở port 5000 cho application
-- Security hardening
-- File descriptor limits
-- Resource constraints
-
-### 📊 Monitoring Tools
-- System monitoring script
-- Update script
-- Log viewing helpers
-
-## Sau Khi Cài Đặt
-
-### Truy Cập Application
+### Cập nhật nhanh
 ```bash
-# Local
-http://localhost:5000
-
-# External (thay YOUR_IP)
-http://YOUR_VPS_IP:5000
+curl -sSL https://raw.githubusercontent.com/huynd94/TheBrowserShield/main/scripts/update-system.sh | bash
 ```
 
-### Quản Lý Service
+### Dọn dẹp scripts cũ
 ```bash
-# Xem trạng thái
+cd /home/opc/browsershield/scripts
+./cleanup-unused-scripts.sh
+```
+
+### Giám sát hệ thống
+```bash
+cd /home/opc/browsershield/scripts
+./monitor.sh
+```
+
+## 📋 Sau Khi Cài Đặt
+
+### Truy cập ứng dụng:
+- **Trang chủ**: http://your-server:5000
+- **Admin Panel**: http://your-server:5000/admin
+- **Mode Manager**: http://your-server:5000/mode-manager
+
+### Kiểm tra service:
+```bash
 sudo systemctl status browsershield.service
+```
 
-# Start/Stop/Restart
-sudo systemctl start browsershield.service
-sudo systemctl stop browsershield.service
-sudo systemctl restart browsershield.service
-
-# Xem logs
+### Xem logs:
+```bash
 sudo journalctl -u browsershield.service -f
 ```
 
-### Monitoring & Maintenance
+## 🛠️ Quản Lý Service
+
 ```bash
-# Monitor hệ thống
-/home/browserapp/browsershield/monitor.sh
+# Khởi động
+sudo systemctl start browsershield.service
 
-# Update application
-/home/browserapp/browsershield/update.sh
+# Dừng
+sudo systemctl stop browsershield.service
 
-# Backup data
-tar -czf backup-$(date +%Y%m%d).tar.gz /home/browserapp/browsershield/data/
+# Khởi động lại
+sudo systemctl restart browsershield.service
+
+# Kiểm tra trạng thái
+sudo systemctl status browsershield.service
 ```
 
-## Cấu Hình Advanced
+## ⚙️ Chế Độ Hoạt Động
 
-### Environment Variables
-File: `/home/browserapp/browsershield/.env`
+### Mock Mode (Mặc định)
+- Dùng cho demo và testing
+- Không cần cài đặt trình duyệt thật
+- An toàn và nhanh chóng
 
+### Production Mode (Chrome)
+- Trình duyệt automation thật
+- Cần cài đặt Chromium:
 ```bash
-PORT=5000
-NODE_ENV=production
-API_TOKEN=your-generated-token
-ENABLE_RATE_LIMIT=true
-PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
+sudo dnf install -y epel-release chromium
 ```
 
-### API Authentication
-Nếu muốn bảo mật API:
-
+### Firefox Mode
+- Automation với Firefox
+- Cần cài đặt Firefox:
 ```bash
-# Xem token hiện tại
-sudo -u browserapp cat /home/browserapp/browsershield/.env | grep API_TOKEN
-
-# Sử dụng token trong requests
-curl -H "Authorization: Bearer YOUR_TOKEN" http://localhost:5000/api/profiles
+sudo dnf install -y firefox
 ```
 
-### Nginx Reverse Proxy (Optional)
+## 🔧 Xử Lý Sự Cố
+
+### Service không khởi động:
 ```bash
-# Cài đặt Nginx
-sudo dnf install -y nginx
+# Kiểm tra logs
+sudo journalctl -u browsershield.service -n 20
 
-# Cấu hình
-sudo tee /etc/nginx/conf.d/browsershield.conf << 'EOF'
-server {
-    listen 80;
-    server_name your-domain.com;
-    
-    location / {
-        proxy_pass http://localhost:5000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-EOF
-
-# Start Nginx
-sudo systemctl enable nginx
-sudo systemctl start nginx
-
-# Mở port 80
-sudo firewall-cmd --permanent --add-service=http
-sudo firewall-cmd --reload
+# Kiểm tra syntax
+cd /home/opc/browsershield
+node -c server.js
 ```
 
-## Troubleshooting
-
-### Service Không Start
+### Port bị chiếm:
 ```bash
-# Xem lỗi chi tiết
-sudo journalctl -u browsershield.service -n 50
-
-# Kiểm tra file permissions
-ls -la /home/browserapp/browsershield/
-
-# Test manual start
-sudo -u browserapp bash -c "cd /home/browserapp/browsershield && node server.js"
-```
-
-### Chrome Issues
-```bash
-# Test Chrome installation
-google-chrome-stable --version
-
-# Test headless mode
-google-chrome-stable --headless --no-sandbox --disable-dev-shm-usage --dump-dom https://example.com
-```
-
-### Port Issues
-```bash
-# Kiểm tra port đang listen
-netstat -tlnp | grep :5000
-
-# Kiểm tra firewall
-sudo firewall-cmd --list-all
-```
-
-### Memory Issues
-```bash
-# Kiểm tra RAM
-free -h
-
-# Tạo swap file nếu cần
-sudo fallocate -l 2G /swapfile
-sudo chmod 600 /swapfile
-sudo mkswap /swapfile
-sudo swapon /swapfile
-```
-
-## Update Application
-
-### Automatic Update
-```bash
-/home/browserapp/browsershield/update.sh
-```
-
-### Manual Update
-```bash
-cd /home/browserapp/browsershield
-
-# Backup data
-tar -czf backup-$(date +%Y%m%d).tar.gz data/
-
-# Update code (if git repo)
-git pull origin main
-
-# Update dependencies
-npm install --production
-
-# Restart service
+# Kill process cũ
+sudo pkill -f "node server.js"
 sudo systemctl restart browsershield.service
 ```
 
-## Uninstall
-
+### Khôi phục từ backup:
 ```bash
-# Stop service
+cd /home/opc
 sudo systemctl stop browsershield.service
-sudo systemctl disable browsershield.service
-
-# Remove service file
-sudo rm /etc/systemd/system/browsershield.service
-sudo systemctl daemon-reload
-
-# Remove application
-sudo rm -rf /home/browserapp/browsershield
-
-# Remove user (optional)
-sudo userdel -r browserapp
-
-# Close firewall port
-sudo firewall-cmd --permanent --remove-port=5000/tcp
-sudo firewall-cmd --reload
+rm -rf browsershield
+cp -r browsershield-backup-YYYYMMDD-HHMMSS browsershield
+sudo systemctl start browsershield.service
 ```
 
-## Hỗ Trợ
+## 📞 Hỗ Trợ
 
-- **Project URL**: https://github.com/huynd94/TheBrowserShield
-- **Issues**: Báo lỗi tại GitHub repository
-- **Original Demo**: https://replit.com/@ngocdm2006/BrowserShield
-- **Documentation**: Xem file DEPLOYMENT.md để biết thêm chi tiết
+- **GitHub**: https://github.com/huynd94/TheBrowserShield
+- **Issues**: https://github.com/huynd94/TheBrowserShield/issues
+- **Documentation**: Xem các file MD trong project
 
-## Changelog
+## 📅 Bảo Trì Định Kỳ
 
-- **v1.0**: Initial release với auto-installer
-- **Oracle Linux 9**: Optimized cho Oracle Linux 9 VPS
-- **Production Ready**: SystemD service, security hardening, monitoring tools
+### Hàng tuần:
+- Chạy script cập nhật
+- Kiểm tra logs hệ thống
+- Dọn dẹp backup cũ
+
+### Hàng tháng:
+- Backup toàn bộ hệ thống
+- Đánh giá hiệu suất
+- Cập nhật documentation

@@ -40,14 +40,94 @@ A professional Node.js application for managing anti-detect browser profiles wit
 
 **One-line installer:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/huynd94/TheBrowserShield/main/scripts/install-browsershield.sh | bash
+curl -sSL https://raw.githubusercontent.com/huynd94/TheBrowserShield/main/scripts/install-browsershield-fixed-robust.sh | bash
 ```
 
 **Manual installation:**
 ```bash
-wget https://raw.githubusercontent.com/huynd94/TheBrowserShield/main/scripts/install-browsershield.sh
-chmod +x install-browsershield.sh
-./install-browsershield.sh
+wget https://raw.githubusercontent.com/huynd94/TheBrowserShield/main/scripts/install-browsershield-fixed-robust.sh
+chmod +x install-browsershield-fixed-robust.sh
+./install-browsershield-fixed-robust.sh
+```
+
+## 🔄 System Updates
+
+### Quick Update Commands
+
+**Update from GitHub (Recommended):**
+```bash
+curl -sSL https://raw.githubusercontent.com/huynd94/TheBrowserShield/main/scripts/update-system.sh | bash
+```
+
+**Local update (if you have the files):**
+```bash
+cd /home/opc/browsershield/scripts
+./update-system.sh
+```
+
+### Update Features
+- ✅ Automatic backup before updates
+- ✅ Data preservation (profiles, proxy pool, mode config)  
+- ✅ Syntax validation before restart
+- ✅ Rollback capability on failures
+- ✅ Health check verification
+- ✅ Service management automation
+
+### What Gets Updated
+- Application code from GitHub
+- Dependencies and packages
+- System service configuration
+- Documentation and scripts
+
+### Manual Update Process
+If automated update fails:
+
+1. **Stop service:**
+   ```bash
+   sudo systemctl stop browsershield.service
+   ```
+
+2. **Backup current installation:**
+   ```bash
+   cp -r /home/opc/browsershield /home/opc/browsershield-backup
+   ```
+
+3. **Download latest code:**
+   ```bash
+   cd /tmp
+   git clone https://github.com/huynd94/TheBrowserShield.git browsershield-new
+   ```
+
+4. **Preserve data:**
+   ```bash
+   cp /home/opc/browsershield/data/* /tmp/browsershield-new/data/
+   cp /home/opc/browsershield/.env /tmp/browsershield-new/
+   ```
+
+5. **Replace installation:**
+   ```bash
+   rm -rf /home/opc/browsershield
+   mv /tmp/browsershield-new /home/opc/browsershield
+   cd /home/opc/browsershield
+   npm install --production
+   ```
+
+6. **Start service:**
+   ```bash
+   sudo systemctl start browsershield.service
+   ```
+
+### Cleanup Unused Scripts
+```bash
+cd /home/opc/browsershield/scripts
+./cleanup-unused-scripts.sh
+```
+
+### System Health Check
+```bash
+cd /home/opc/browsershield/scripts
+./monitor.sh
+```
 ```
 
 ### Development Setup
