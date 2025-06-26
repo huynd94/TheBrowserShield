@@ -192,9 +192,10 @@ Preferred communication style: Simple, everyday language.
 
 Current: Full-featured demo running on Replit with mock browser service
 Production: Successfully deployed on Oracle Linux 9 VPS (138.2.82.254:5000)
-- Mock mode working perfectly for testing
-- Firefox integration created as Chrome alternative for Oracle Linux 9
-- Ready to deploy Firefox-powered real browser automation
+- Service installed and running with SystemD
+- Mock mode working perfectly for testing and demo
+- Real browser integration attempted (Firefox/Chromium) but Oracle Linux 9 compatibility issues
+- Recommendation: Use stable Mock mode for demos, real browsers for production on compatible systems
 
 ### Oracle Linux 9 VPS Deployment
 - Comprehensive deployment guide created (DEPLOYMENT.md)
