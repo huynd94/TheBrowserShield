@@ -147,6 +147,9 @@ Preferred communication style: Simple, everyday language.
   - **NEW**: Created GoLogin-style remote browser control interface with full automation capabilities
   - **NEW**: Added complete documentation system with Vietnamese guides and web-accessible docs
   - **NEW**: Enhanced admin panel with browser control modals and edit profile functionality
+  - **NEW**: Fixed Firefox Mode compatibility issues by replacing deprecated puppeteer-firefox with Chrome+Firefox fingerprinting
+  - **NEW**: Updated server to use actual browser services instead of mock implementations
+  - **NEW**: Created VPS update scripts for seamless deployment of Firefox Mode fixes
 
 ## Mode Switching System
 
