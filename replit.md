@@ -136,6 +136,46 @@ Preferred communication style: Simple, everyday language.
   - Created robust installation script with better error handling
   - Updated documentation to protect VPS IP privacy
   - All migration checklist items completed and verified
+  - **NEW**: Implemented comprehensive mode switching system
+  - **NEW**: Added Mode Manager UI for switching between Mock/Production/Firefox modes
+  - **NEW**: Fixed homepage profile loading and admin page browser start functionality
+  - **NEW**: Added Edit profile feature with modal interface
+
+## Mode Switching System
+
+BrowserShield now supports three operation modes:
+
+### Available Modes:
+1. **Mock Mode (Default)**: Demo functionality with simulated browser automation
+   - No external dependencies required
+   - Fastest performance and highest reliability
+   - Perfect for API testing and demonstrations
+
+2. **Production Mode**: Real browser automation using Chrome/Chromium
+   - Requires Chrome or Chromium installation
+   - Full Puppeteer capabilities with actual website interaction
+   - Screenshot capture and real automation features
+
+3. **Firefox Mode**: Real browser automation using Firefox
+   - Requires Firefox installation
+   - Alternative fingerprinting and detection patterns
+   - Different browser engine for varied automation
+
+### How to Switch Modes:
+- **Web Interface**: Access `/mode-manager` for visual mode switching
+- **API**: Use `/api/mode/switch` endpoint programmatically
+- **Direct Config**: Edit `data/mode-config.json` file
+
+### Installation Commands for VPS:
+```bash
+# For Production Mode (Chrome/Chromium)
+sudo dnf install -y epel-release chromium
+
+# For Firefox Mode
+sudo dnf install -y firefox
+```
+
+The system automatically checks browser availability and only allows switching to supported modes.
 
 - June 25, 2025: Complete anti-detect browser profile manager with advanced features
 - **Phase 1**: Core API and profile management system

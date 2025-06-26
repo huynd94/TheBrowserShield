@@ -143,6 +143,79 @@ app.get('/admin', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
+// Serve mode manager page
+app.get('/mode-manager', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'mode-manager.html'));
+});
+
+// Mode Management API
+const ModeSwitcher = require('./config/mode-switcher');
+const modeSwitcher = new ModeSwitcher();
+
+// Mode endpoints
+app.get('/api/mode', (req, res) => {
+    try {
+        const modeInfo = modeSwitcher.getCurrentModeInfo();
+        res.json({
+            success: true,
+            data: modeInfo
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Failed to get mode information'
+        });
+    }
+});
+
+app.post('/api/mode/switch', (req, res) => {
+    try {
+        const { mode } = req.body;
+        
+        if (!mode) {
+            return res.status(400).json({
+                success: false,
+                error: 'Mode is required'
+            });
+        }
+
+        const result = modeSwitcher.switchMode(mode);
+        
+        if (result.success) {
+            res.json({
+                success: true,
+                data: result,
+                message: 'Mode switched successfully. Server restart required.'
+            });
+        } else {
+            res.status(400).json({
+                success: false,
+                error: result.error
+            });
+        }
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Failed to switch mode'
+        });
+    }
+});
+
+app.get('/api/mode/check-requirements', (req, res) => {
+    try {
+        const modes = modeSwitcher.getAvailableModes();
+        res.json({
+            success: true,
+            data: modes
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Failed to check requirements'
+        });
+    }
+});
+
 // API Routes
 app.get('/api/profiles', (req, res) => {
     res.json({
@@ -356,7 +429,14 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🛡️ BrowserShield Anti-Detect Browser Manager running on port ${PORT}`);
     console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`🌐 Access: http://localhost:${PORT}`);
-    console.log(`🎭 Mode: Mock (Demo)`);
+    
+    // Display current mode
+    try {
+        const currentMode = modeSwitcher.getCurrentModeInfo();
+        console.log(`🎭 Mode: ${currentMode.info.name}`);
+    } catch (error) {
+        console.log(`🎭 Mode: Mock (Demo)`);
+    }
 });
 
 module.exports = app;
