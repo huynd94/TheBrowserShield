@@ -235,21 +235,24 @@ class ProfileManager {
                                 </span>
                                 <div class="btn-group" role="group">
                                     ${!isRunning ? `
-                                        <button class="btn btn-success btn-sm" onclick="profileManager.startBrowser('${profile.id}')">
-                                            <i class="bi bi-play"></i>
+                                        <button class="btn btn-success btn-sm" onclick="profileManager.startBrowser('${profile.id}')" title="Khởi chạy trình duyệt">
+                                            <i class="bi bi-play-fill"></i>
                                         </button>
                                     ` : `
-                                        <button class="btn btn-danger btn-sm" onclick="profileManager.stopBrowser('${profile.id}')">
-                                            <i class="bi bi-stop"></i>
+                                        <button class="btn btn-danger btn-sm" onclick="profileManager.stopBrowser('${profile.id}')" title="Dừng trình duyệt">
+                                            <i class="bi bi-stop-fill"></i>
+                                        </button>
+                                        <button class="btn btn-primary btn-sm" onclick="profileManager.openBrowserControl('${profile.id}')" title="Điều khiển trình duyệt">
+                                            <i class="bi bi-window-desktop"></i>
                                         </button>
                                     `}
-                                    <button class="btn btn-info btn-sm" onclick="profileManager.showProfileDetails('${profile.id}')">
+                                    <button class="btn btn-info btn-sm" onclick="profileManager.showProfileDetails('${profile.id}')" title="Xem chi tiết">
                                         <i class="bi bi-info-circle"></i>
                                     </button>
-                                    <button class="btn btn-warning btn-sm" onclick="profileManager.editProfile('${profile.id}')">
+                                    <button class="btn btn-warning btn-sm" onclick="profileManager.editProfile('${profile.id}')" title="Chỉnh sửa">
                                         <i class="bi bi-pencil"></i>
                                     </button>
-                                    <button class="btn btn-outline-danger btn-sm" onclick="profileManager.deleteProfile('${profile.id}')">
+                                    <button class="btn btn-outline-danger btn-sm" onclick="profileManager.deleteProfile('${profile.id}')" title="Xóa">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </div>
@@ -347,7 +350,7 @@ class ProfileManager {
         }
     }
 
-    // New function: Open browser control interface
+    // Open browser control interface (GoLogin-style)
     async openBrowserControl(profileId) {
         const profile = this.profiles.find(p => p.id === profileId);
         if (!profile) {
@@ -355,86 +358,24 @@ class ProfileManager {
             return;
         }
 
-        // Create browser control modal
-        const modal = document.createElement('div');
-        modal.className = 'modal fade';
-        modal.id = 'browserControlModal';
-        modal.innerHTML = `
-            <div class="modal-dialog modal-xl">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">
-                            <i class="bi bi-display"></i> Điều khiển trình duyệt - ${profile.name}
-                        </h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="row mb-3">
-                            <div class="col-md-8">
-                                <div class="input-group">
-                                    <input type="url" class="form-control" id="navigateUrl" 
-                                           placeholder="Nhập URL để điều hướng..." 
-                                           value="https://bot.sannysoft.com/">
-                                    <button class="btn btn-primary" onclick="profileManager.navigateTo('${profileId}')">
-                                        <i class="bi bi-arrow-right"></i> Đi tới
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <button class="btn btn-success w-100" onclick="profileManager.takeScreenshot('${profileId}')">
-                                    <i class="bi bi-camera"></i> Chụp màn hình
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div class="row mb-3">
-                            <div class="col-12">
-                                <h6>Thực thi JavaScript:</h6>
-                                <textarea class="form-control mb-2" id="jsCode" rows="4" 
-                                          placeholder="Nhập mã JavaScript để thực thi...">
-// Ví dụ: Click vào nút đầu tiên
-document.querySelector('button')?.click();
+        // Check if browser is running
+        const session = this.activeSessions.find(s => s.profileId === profileId);
+        if (!session) {
+            // Offer to start browser first
+            const shouldStart = confirm(`Profile "${profile.name}" chưa chạy. Bạn có muốn khởi động trình duyệt trước không?`);
+            if (shouldStart) {
+                await this.startBrowser(profileId);
+                // Wait a moment for session to start
+                setTimeout(() => this.openBrowserControl(profileId), 2000);
+                return;
+            }
+        }
 
-// Hoặc điền form
-document.querySelector('input[type="text"]').value = 'Hello World';</textarea>
-                                <div class="d-flex gap-2">
-                                    <button class="btn btn-warning" onclick="profileManager.executeJS('${profileId}')">
-                                        <i class="bi bi-code-slash"></i> Thực thi
-                                    </button>
-                                    <button class="btn btn-info" onclick="profileManager.getCurrentInfo('${profileId}')">
-                                        <i class="bi bi-info-circle"></i> Lấy thông tin trang
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-12">
-                                <h6>Kết quả:</h6>
-                                <div id="controlResult" class="border rounded p-3 bg-light" style="min-height: 200px;">
-                                    <p class="text-muted">Kết quả sẽ hiển thị ở đây...</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-                        <button type="button" class="btn btn-danger" onclick="profileManager.stopBrowser('${profileId}'); bootstrap.Modal.getInstance(document.getElementById('browserControlModal')).hide();">
-                            <i class="bi bi-stop"></i> Dừng Browser
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        document.body.appendChild(modal);
-        const bsModal = new bootstrap.Modal(modal);
-        bsModal.show();
-
-        // Clean up modal when closed
-        modal.addEventListener('hidden.bs.modal', () => {
-            document.body.removeChild(modal);
-        });
+        // Open browser control in new window/tab
+        const controlUrl = `/browser-control?profile=${profileId}&name=${encodeURIComponent(profile.name)}`;
+        window.open(controlUrl, '_blank', 'width=1400,height=900,scrollbars=yes,resizable=yes');
+        
+        this.showToast('Giao diện điều khiển trình duyệt đã mở trong tab mới', 'success');
     }
 
     // Navigate to URL

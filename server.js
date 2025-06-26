@@ -85,6 +85,11 @@ app.get('/README.md', (req, res) => {
     res.sendFile(path.join(__dirname, 'README.md'));
 });
 
+// Browser control interface
+app.get('/browser-control', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'browser-control.html'));
+});
+
 // Root endpoint with web interface
 app.get('/', (req, res) => {
     res.send(`

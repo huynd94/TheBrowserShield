@@ -144,6 +144,9 @@ Preferred communication style: Simple, everyday language.
   - **NEW**: Resolved "undefined" display issues in Active Sessions
   - **NEW**: Added comprehensive browser control interface for direct user interaction
   - **NEW**: Implemented update system with GitHub integration and script cleanup automation
+  - **NEW**: Created GoLogin-style remote browser control interface with full automation capabilities
+  - **NEW**: Added complete documentation system with Vietnamese guides and web-accessible docs
+  - **NEW**: Enhanced admin panel with browser control modals and edit profile functionality
 
 ## Mode Switching System
 
