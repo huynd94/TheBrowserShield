@@ -58,13 +58,19 @@ class BrowserShieldAdmin {
             const response = await fetch(`${this.baseUrl}/api/profiles`);
             const data = await response.json();
             
-            if (data.success) {
-                this.profiles = data.profiles || [];
-                this.renderProfiles();
-                console.log(`Loaded ${this.profiles.length} profiles`);
+            // Handle different response formats
+            if (data.success && data.data) {
+                this.profiles = data.data;
+            } else if (data.profiles) {
+                this.profiles = data.profiles;
+            } else if (Array.isArray(data)) {
+                this.profiles = data;
             } else {
-                this.showToast('Failed to load profiles', 'error');
+                this.profiles = [];
             }
+            
+            this.renderProfiles();
+            console.log(`Loaded ${this.profiles.length} profiles`);
         } catch (error) {
             console.error('Error loading profiles:', error);
             this.showToast('Error loading profiles', 'error');
@@ -76,11 +82,19 @@ class BrowserShieldAdmin {
             const response = await fetch(`${this.baseUrl}/api/profiles/sessions/active`);
             const data = await response.json();
             
-            if (data.success) {
-                this.sessions = data.sessions || [];
-                this.renderSessions();
-                console.log(`Loaded ${this.sessions.length} active sessions`);
+            // Handle different response formats
+            if (data.success && data.data) {
+                this.sessions = data.data;
+            } else if (data.sessions) {
+                this.sessions = data.sessions;
+            } else if (Array.isArray(data)) {
+                this.sessions = data;
+            } else {
+                this.sessions = [];
             }
+            
+            this.renderSessions();
+            console.log(`Loaded ${this.sessions.length} active sessions`);
         } catch (error) {
             console.error('Error loading sessions:', error);
             this.showToast('Error loading sessions', 'error');
@@ -331,13 +345,24 @@ class BrowserShieldAdmin {
     async startSession(profileId) {
         try {
             const response = await fetch(`${this.baseUrl}/api/profiles/${profileId}/start`, {
-                method: 'POST'
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    autoNavigateUrl: 'https://bot.sannysoft.com/'
+                })
             });
 
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
             const data = await response.json();
+            console.log('Start session response:', data);
             
             if (data.success) {
-                this.showToast('Browser session started', 'success');
+                this.showToast(`Browser session started successfully${data.message ? ': ' + data.message : ''}`, 'success');
                 await this.loadSessions();
                 await this.loadProfiles();
                 await this.updateStats();
@@ -347,29 +372,37 @@ class BrowserShieldAdmin {
                 this.logs.unshift({
                     timestamp: new Date().toISOString(),
                     action: 'Session Started',
-                    details: `Browser session started for profile "${profile?.name}"`,
+                    details: `Browser session started for profile "${profile?.name || 'Unknown'}"`,
                     profileId: profileId
                 });
                 this.renderLogs();
             } else {
-                this.showToast('Failed to start session', 'error');
+                this.showToast(data.message || 'Failed to start session', 'error');
             }
         } catch (error) {
             console.error('Error starting session:', error);
-            this.showToast('Error starting session', 'error');
+            this.showToast(`Error starting session: ${error.message}`, 'error');
         }
     }
 
     async stopSession(profileId) {
         try {
             const response = await fetch(`${this.baseUrl}/api/profiles/${profileId}/stop`, {
-                method: 'POST'
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
             });
 
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
             const data = await response.json();
+            console.log('Stop session response:', data);
             
             if (data.success) {
-                this.showToast('Browser session stopped', 'success');
+                this.showToast(`Browser session stopped successfully${data.message ? ': ' + data.message : ''}`, 'success');
                 await this.loadSessions();
                 await this.loadProfiles();
                 await this.updateStats();
@@ -379,16 +412,16 @@ class BrowserShieldAdmin {
                 this.logs.unshift({
                     timestamp: new Date().toISOString(),
                     action: 'Session Stopped',
-                    details: `Browser session stopped for profile "${profile?.name}"`,
+                    details: `Browser session stopped for profile "${profile?.name || 'Unknown'}"`,
                     profileId: profileId
                 });
                 this.renderLogs();
             } else {
-                this.showToast('Failed to stop session', 'error');
+                this.showToast(data.message || 'Failed to stop session', 'error');
             }
         } catch (error) {
             console.error('Error stopping session:', error);
-            this.showToast('Error stopping session', 'error');
+            this.showToast(`Error stopping session: ${error.message}`, 'error');
         }
     }
 

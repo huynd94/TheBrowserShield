@@ -52,9 +52,21 @@ class ProfileManager {
         try {
             const response = await fetch('/api/profiles');
             const data = await response.json();
-            this.profiles = data.data;
+            
+            // Handle different response formats
+            if (data.success && data.data) {
+                this.profiles = data.data;
+            } else if (data.profiles) {
+                this.profiles = data.profiles;
+            } else if (Array.isArray(data)) {
+                this.profiles = data;
+            } else {
+                this.profiles = [];
+            }
+            
             this.renderProfiles();
         } catch (error) {
+            console.error('Error loading profiles:', error);
             this.showError('Không thể tải danh sách profiles');
         }
     }
@@ -63,7 +75,18 @@ class ProfileManager {
         try {
             const response = await fetch('/api/profiles/sessions/active');
             const data = await response.json();
-            this.activeSessions = data.data;
+            
+            // Handle different response formats
+            if (data.success && data.data) {
+                this.activeSessions = data.data;
+            } else if (data.sessions) {
+                this.activeSessions = data.sessions;
+            } else if (Array.isArray(data)) {
+                this.activeSessions = data;
+            } else {
+                this.activeSessions = [];
+            }
+            
             this.updateActiveSessionsDisplay();
         } catch (error) {
             console.error('Error loading active sessions:', error);
@@ -222,6 +245,9 @@ class ProfileManager {
                                     `}
                                     <button class="btn btn-info btn-sm" onclick="profileManager.showProfileDetails('${profile.id}')">
                                         <i class="bi bi-info-circle"></i>
+                                    </button>
+                                    <button class="btn btn-warning btn-sm" onclick="profileManager.editProfile('${profile.id}')">
+                                        <i class="bi bi-pencil"></i>
                                     </button>
                                     <button class="btn btn-outline-danger btn-sm" onclick="profileManager.deleteProfile('${profile.id}')">
                                         <i class="bi bi-trash"></i>
@@ -446,6 +472,124 @@ class ProfileManager {
             }
         } catch (error) {
             this.showError('Lỗi kết nối server');
+        }
+    }
+
+    async editProfile(profileId) {
+        try {
+            const profile = this.profiles.find(p => p.id === profileId);
+            if (!profile) {
+                this.showError('Profile not found');
+                return;
+            }
+
+            // Show edit modal with pre-filled data
+            const modalTitle = document.getElementById('modalTitle');
+            const modalContent = document.getElementById('modalContent');
+            
+            modalTitle.innerHTML = '<i class="bi bi-pencil"></i> Edit Profile';
+            modalContent.innerHTML = `
+                <form id="editProfileForm">
+                    <div class="mb-3">
+                        <label class="form-label">Profile Name</label>
+                        <input type="text" class="form-control" id="editProfileName" value="${profile.name}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">User Agent</label>
+                        <textarea class="form-control" id="editUserAgent" rows="3">${profile.userAgent}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Timezone</label>
+                        <select class="form-select" id="editTimezone">
+                            <option value="Asia/Ho_Chi_Minh" ${profile.timezone === 'Asia/Ho_Chi_Minh' ? 'selected' : ''}>Vietnam (GMT+7)</option>
+                            <option value="America/New_York" ${profile.timezone === 'America/New_York' ? 'selected' : ''}>New York (GMT-5)</option>
+                            <option value="Europe/London" ${profile.timezone === 'Europe/London' ? 'selected' : ''}>London (GMT+0)</option>
+                            <option value="Asia/Tokyo" ${profile.timezone === 'Asia/Tokyo' ? 'selected' : ''}>Tokyo (GMT+9)</option>
+                            <option value="Australia/Sydney" ${profile.timezone === 'Australia/Sydney' ? 'selected' : ''}>Sydney (GMT+10)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Viewport</label>
+                        <div class="row">
+                            <div class="col-6">
+                                <input type="number" class="form-control" id="editViewportWidth" value="${profile.viewport.width}" placeholder="Width">
+                            </div>
+                            <div class="col-6">
+                                <input type="number" class="form-control" id="editViewportHeight" value="${profile.viewport.height}" placeholder="Height">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="editSpoofFingerprint" ${profile.spoofFingerprint ? 'checked' : ''}>
+                            <label class="form-check-label">
+                                Anti-Detection (Stealth Mode)
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Auto Navigate URL</label>
+                        <input type="url" class="form-control" id="editAutoNavigateUrl" value="${profile.autoNavigateUrl || ''}" placeholder="https://bot.sannysoft.com/">
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            `;
+
+            // Handle form submission
+            document.getElementById('editProfileForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await this.updateProfile(profileId);
+            });
+
+            new bootstrap.Modal(document.getElementById('profileModal')).show();
+        } catch (error) {
+            console.error('Error editing profile:', error);
+            this.showError('Failed to load profile for editing');
+        }
+    }
+
+    async updateProfile(profileId) {
+        const updateData = {
+            name: document.getElementById('editProfileName').value,
+            userAgent: document.getElementById('editUserAgent').value,
+            timezone: document.getElementById('editTimezone').value,
+            viewport: {
+                width: parseInt(document.getElementById('editViewportWidth').value),
+                height: parseInt(document.getElementById('editViewportHeight').value)
+            },
+            spoofFingerprint: document.getElementById('editSpoofFingerprint').checked,
+            autoNavigateUrl: document.getElementById('editAutoNavigateUrl').value
+        };
+
+        try {
+            const response = await fetch(`/api/profiles/${profileId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(updateData)
+            });
+
+            if (response.ok) {
+                this.showSuccess('Profile updated successfully!');
+                bootstrap.Modal.getInstance(document.getElementById('profileModal')).hide();
+                this.loadProfiles();
+            } else {
+                const error = await response.json();
+                this.showError(error.message || 'Failed to update profile');
+            }
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            this.showError('Connection error while updating profile');
         }
     }
 
