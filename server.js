@@ -1,11 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const profileRoutes = require('./routes/profiles');
-const proxyRoutes = require('./routes/proxy');
-const errorHandler = require('./middleware/errorHandler');
-const logger = require('./utils/logger');
-const { authenticateToken, rateLimiter } = require('./middleware/auth');
+const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -13,148 +9,354 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(cors());
 app.use(express.json());
-
-// Serve static files (UI)
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Rate limiting (optional)
-if (process.env.ENABLE_RATE_LIMIT === 'true') {
-    app.use('/api', rateLimiter());
-}
-
-// API Authentication (optional)
-if (process.env.API_TOKEN) {
-    app.use(authenticateToken);
-}
-
-// Logging middleware
+// Request logging
 app.use((req, res, next) => {
-    logger.info(`${req.method} ${req.path} - ${req.ip}`);
+    const timestamp = new Date().toISOString();
+    console.log(`${timestamp} - ${req.method} ${req.path} - ${req.ip}`);
     next();
 });
 
-// Routes
-app.use('/api/profiles', profileRoutes);
-app.use('/api/proxy', proxyRoutes);
+// In-memory storage for demo
+let profiles = [
+    {
+        id: uuidv4(),
+        name: "Default Profile",
+        userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        timezone: "America/New_York",
+        viewport: { width: 1920, height: 1080 },
+        status: "mock",
+        createdAt: new Date().toISOString()
+    },
+    {
+        id: uuidv4(),
+        name: "Mobile Profile", 
+        userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+        timezone: "Europe/London",
+        viewport: { width: 375, height: 667 },
+        status: "mock",
+        createdAt: new Date().toISOString()
+    },
+    {
+        id: uuidv4(),
+        name: "MacOS Profile",
+        userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        timezone: "Asia/Tokyo",
+        viewport: { width: 1440, height: 900 },
+        status: "mock",
+        createdAt: new Date().toISOString()
+    }
+];
+
+let activeSessions = [];
+let serverStartTime = Date.now();
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-    res.json({ 
-        status: 'ok', 
+    res.json({
+        status: 'ok',
+        service: 'BrowserShield Anti-Detect Browser Manager',
+        mode: 'Mock Mode',
         timestamp: new Date().toISOString(),
-        service: 'Anti-Detect Browser Profile Manager'
+        uptime: Math.floor((Date.now() - serverStartTime) / 1000),
+        version: '1.0.0'
     });
 });
 
-// Root endpoint with API documentation
+// Root endpoint with web interface
 app.get('/', (req, res) => {
+    res.send(`
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BrowserShield - Anti-Detect Browser Manager</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #333; text-align: center; margin-bottom: 30px; }
+        .status { background: #e8f5e8; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        .api-info { background: #f0f8ff; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        .endpoints { background: #fff8dc; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        ul { list-style-type: none; padding: 0; }
+        li { padding: 8px 0; border-bottom: 1px solid #eee; }
+        a { color: #007bff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .footer { text-align: center; margin-top: 40px; color: #666; }
+        .admin-link { background: linear-gradient(135deg, #2c3e50, #3498db); color: white; padding: 15px 30px; border-radius: 50px; text-decoration: none; display: inline-block; margin: 20px 0; font-weight: bold; text-align: center; transition: transform 0.2s; }
+        .admin-link:hover { color: white; transform: translateY(-2px); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-shield-alt"></i> BrowserShield Anti-Detect Browser Manager</h1>
+        
+        <div class="status">
+            <h3><i class="fas fa-check-circle"></i> Service Status</h3>
+            <p><strong>Status:</strong> Running in Mock Mode</p>
+            <p><strong>Port:</strong> 5000</p>
+            <p><strong>API Token:</strong> 4qEar4YvWqO7Djho4CMfprldGshIoKaFfJAEjepvs2k=</p>
+            <p><strong>Started:</strong> ${new Date().toISOString()}</p>
+        </div>
+
+        <div class="text-center">
+            <a href="/admin" class="admin-link">
+                <i class="fas fa-cog"></i> Open Admin Panel
+            </a>
+        </div>
+
+        <div class="api-info">
+            <h3><i class="fas fa-code"></i> API Information</h3>
+            <p>All API endpoints are functional and return mock data for testing purposes.</p>
+            <p>Use the API token above for authenticated requests (if enabled).</p>
+        </div>
+
+        <div class="endpoints">
+            <h3><i class="fas fa-link"></i> Available Endpoints</h3>
+            <ul>
+                <li><a href="/health">GET /health</a> - Service health check</li>
+                <li><a href="/admin">GET /admin</a> - Admin panel</li>
+                <li><a href="/api/profiles">GET /api/profiles</a> - List all profiles</li>
+                <li><a href="/api/profiles/sessions/active">GET /api/profiles/sessions/active</a> - Active sessions</li>
+                <li>POST /api/profiles - Create new profile</li>
+                <li>POST /api/profiles/:id/start - Start browser session</li>
+                <li>POST /api/profiles/:id/stop - Stop browser session</li>
+                <li>DELETE /api/profiles/:id - Delete profile</li>
+            </ul>
+        </div>
+
+        <div class="footer">
+            <p>BrowserShield v1.0.0 - Anti-Detect Browser Profile Manager</p>
+            <p>Running on Node.js ${process.version}</p>
+        </div>
+    </div>
+</body>
+</html>
+    `);
+});
+
+// Admin panel endpoint
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+// API Routes
+app.get('/api/profiles', (req, res) => {
     res.json({
-        service: 'Anti-Detect Browser Profile Manager',
-        version: '1.0.0',
-        endpoints: {
-            'GET /health': 'Health check',
-            'GET /': 'Web UI for profile management',
-            'GET /api/profiles': 'List all profiles',
-            'POST /api/profiles': 'Create new profile',
-            'GET /api/profiles/:id': 'Get profile by ID',
-            'PUT /api/profiles/:id': 'Update profile',
-            'DELETE /api/profiles/:id': 'Delete profile',
-            'POST /api/profiles/:id/start': 'Start browser with profile (supports autoNavigateUrl)',
-            'POST /api/profiles/:id/stop': 'Stop browser session',
-            'GET /api/profiles/:id/status': 'Get browser session status',
-            'GET /api/profiles/:id/logs': 'Get profile activity logs',
-            'POST /api/profiles/:id/navigate': 'Navigate browser to URL',
-            'POST /api/profiles/:id/execute': 'Execute JavaScript in browser',
-            'GET /api/profiles/sessions/active': 'Get all active sessions',
-            'GET /api/profiles/system/logs': 'Get system activity logs',
-            'GET /api/profiles/system/stats': 'Get system statistics',
-            'GET /api/proxy': 'List all proxies in pool',
-            'POST /api/proxy': 'Add proxy to pool',
-            'DELETE /api/proxy/:id': 'Remove proxy from pool',
-            'GET /api/proxy/random': 'Get random proxy from pool',
-            'GET /api/proxy/least-used': 'Get least used proxy',
-            'POST /api/proxy/:id/test': 'Test proxy connectivity',
-            'POST /api/proxy/:id/toggle': 'Toggle proxy active status',
-            'GET /api/proxy/stats': 'Get proxy pool statistics'
-        },
-        documentation: {
-            createProfile: {
-                method: 'POST',
-                endpoint: '/api/profiles',
-                body: {
-                    name: 'string (required)',
-                    userAgent: 'string (optional)',
-                    timezone: 'string (optional, e.g., "America/New_York")',
-                    proxy: {
-                        host: 'string',
-                        port: 'number',
-                        type: 'string (http/https/socks4/socks5)',
-                        username: 'string (optional)',
-                        password: 'string (optional)'
-                    },
-                    viewport: {
-                        width: 'number (default: 1366)',
-                        height: 'number (default: 768)'
-                    },
-                    spoofFingerprint: 'boolean (default: true)'
-                }
-            },
-            startBrowserWithAutoNav: {
-                method: 'POST',
-                endpoint: '/api/profiles/:id/start',
-                body: {
-                    autoNavigateUrl: 'string (optional, URL to navigate to after starting browser)'
-                }
-            },
-            addProxyToPool: {
-                method: 'POST',
-                endpoint: '/api/proxy',
-                body: {
-                    host: 'string (required)',
-                    port: 'number (required)',
-                    type: 'string (http/https/socks4/socks5)',
-                    username: 'string (optional)',
-                    password: 'string (optional)',
-                    country: 'string (optional)',
-                    city: 'string (optional)',
-                    provider: 'string (optional)'
-                }
-            }
-        },
-        features: {
-            webUI: 'Access web management interface at /',
-            proxyPool: 'Manage shared proxy pool for profiles',
-            activityLogs: 'Track all profile and browser activities',
-            separateUserData: 'Each profile uses isolated browser data directory',
-            autoNavigation: 'Start browser and navigate to URL in one request',
-            apiAuthentication: 'Optional API token authentication (set API_TOKEN env var)',
-            rateLimiting: 'Optional rate limiting (set ENABLE_RATE_LIMIT=true)',
-            mockMode: 'Currently running in demo mode - switch to BrowserService for production'
+        success: true,
+        count: profiles.length,
+        profiles: profiles
+    });
+});
+
+app.post('/api/profiles', (req, res) => {
+    const { name, userAgent, timezone, viewport, proxy, autoNavigateUrl } = req.body;
+    
+    if (!name) {
+        return res.status(400).json({
+            success: false,
+            error: 'Profile name is required'
+        });
+    }
+
+    const profile = {
+        id: uuidv4(),
+        name,
+        userAgent: userAgent || "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        timezone: timezone || "America/New_York",
+        viewport: viewport || { width: 1920, height: 1080 },
+        proxy: proxy || null,
+        autoNavigateUrl: autoNavigateUrl || null,
+        status: "mock",
+        createdAt: new Date().toISOString()
+    };
+
+    profiles.push(profile);
+    
+    res.json({
+        success: true,
+        profile: profile
+    });
+});
+
+app.get('/api/profiles/:id', (req, res) => {
+    const profile = profiles.find(p => p.id === req.params.id);
+    if (!profile) {
+        return res.status(404).json({
+            success: false,
+            error: 'Profile not found'
+        });
+    }
+    
+    res.json({
+        success: true,
+        profile: profile
+    });
+});
+
+app.delete('/api/profiles/:id', (req, res) => {
+    const profileIndex = profiles.findIndex(p => p.id === req.params.id);
+    if (profileIndex === -1) {
+        return res.status(404).json({
+            success: false,
+            error: 'Profile not found'
+        });
+    }
+
+    // Stop session if active
+    const sessionIndex = activeSessions.findIndex(s => s.profileId === req.params.id);
+    if (sessionIndex !== -1) {
+        activeSessions.splice(sessionIndex, 1);
+    }
+
+    // Remove profile
+    const deletedProfile = profiles.splice(profileIndex, 1)[0];
+    
+    res.json({
+        success: true,
+        message: 'Profile deleted successfully',
+        profile: deletedProfile
+    });
+});
+
+app.post('/api/profiles/:id/start', (req, res) => {
+    const profile = profiles.find(p => p.id === req.params.id);
+    if (!profile) {
+        return res.status(404).json({
+            success: false,
+            error: 'Profile not found'
+        });
+    }
+
+    // Check if session already exists
+    const existingSession = activeSessions.find(s => s.profileId === req.params.id);
+    if (existingSession) {
+        return res.json({
+            success: true,
+            message: 'Session already active',
+            session: existingSession
+        });
+    }
+
+    // Mock browser session
+    const session = {
+        profileId: req.params.id,
+        sessionId: uuidv4(),
+        status: 'mock_active',
+        startTime: Date.now(),
+        browserType: 'mock',
+        currentUrl: req.body.autoNavigateUrl || profile.autoNavigateUrl || 'about:blank'
+    };
+
+    activeSessions.push(session);
+
+    res.json({
+        success: true,
+        message: 'Mock browser session started',
+        session: {
+            ...session,
+            uptime: 0
         }
     });
 });
 
-// Error handling middleware
-app.use(errorHandler);
+app.post('/api/profiles/:id/stop', (req, res) => {
+    const sessionIndex = activeSessions.findIndex(s => s.profileId === req.params.id);
+    if (sessionIndex === -1) {
+        return res.status(404).json({
+            success: false,
+            error: 'No active session found'
+        });
+    }
 
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-    logger.info('SIGTERM received, shutting down gracefully');
-    const BrowserService = require('./services/BrowserService');
-    await BrowserService.stopAllBrowsers();
-    process.exit(0);
+    const stoppedSession = activeSessions.splice(sessionIndex, 1)[0];
+
+    res.json({
+        success: true,
+        message: 'Mock browser session stopped',
+        session: stoppedSession
+    });
 });
 
-process.on('SIGINT', async () => {
-    logger.info('SIGINT received, shutting down gracefully');
-    const BrowserService = require('./services/BrowserService');
-    await BrowserService.stopAllBrowsers();
-    process.exit(0);
+app.get('/api/profiles/sessions/active', (req, res) => {
+    const sessionsWithUptime = activeSessions.map(session => ({
+        ...session,
+        uptime: Math.floor((Date.now() - session.startTime) / 1000)
+    }));
+
+    res.json({
+        success: true,
+        count: sessionsWithUptime.length,
+        sessions: sessionsWithUptime
+    });
 });
 
+// Mock navigation endpoint
+app.post('/api/profiles/:id/navigate', (req, res) => {
+    const { url } = req.body;
+    const session = activeSessions.find(s => s.profileId === req.params.id);
+    
+    if (!session) {
+        return res.status(404).json({
+            success: false,
+            error: 'No active session found'
+        });
+    }
+
+    session.currentUrl = url;
+    
+    res.json({
+        success: true,
+        message: `Mock navigation to ${url}`,
+        currentUrl: url
+    });
+});
+
+// Mock script execution endpoint
+app.post('/api/profiles/:id/execute', (req, res) => {
+    const { script } = req.body;
+    const session = activeSessions.find(s => s.profileId === req.params.id);
+    
+    if (!session) {
+        return res.status(404).json({
+            success: false,
+            error: 'No active session found'
+        });
+    }
+    
+    res.json({
+        success: true,
+        message: 'Mock script execution completed',
+        result: `Mock result for: ${script.substring(0, 50)}...`
+    });
+});
+
+// Error handling
+app.use((err, req, res, next) => {
+    console.error('Error:', err);
+    res.status(500).json({
+        success: false,
+        error: 'Internal server error'
+    });
+});
+
+// 404 handler
+app.use((req, res) => {
+    res.status(404).json({
+        success: false,
+        error: 'Endpoint not found'
+    });
+});
+
+// Start server
 app.listen(PORT, '0.0.0.0', () => {
-    logger.info(`Anti-Detect Browser Profile Manager running on port ${PORT}`);
-    logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🛡️ BrowserShield Anti-Detect Browser Manager running on port ${PORT}`);
+    console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🌐 Access: http://localhost:${PORT}`);
+    console.log(`🎭 Mode: Mock (Demo)`);
 });
 
 module.exports = app;
