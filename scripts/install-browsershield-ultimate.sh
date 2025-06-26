@@ -99,34 +99,56 @@ print_status "Installing EPEL repository..."
 sudo dnf install -y epel-release >/dev/null 2>&1
 
 print_status "Installing core browser dependencies..."
-sudo dnf install -y \
-    alsa-lib \
-    atk \
-    cairo \
-    cups-libs \
-    dbus-glib \
-    fontconfig \
-    freetype \
-    gdk-pixbuf2 \
-    glib2 \
-    gtk3 \
-    libX11 \
-    libXcomposite \
-    libXcursor \
-    libXdamage \
-    libXext \
-    libXfixes \
-    libXi \
-    libXrandr \
-    libXrender \
-    libXss \
-    libXtst \
-    libdrm \
-    libxcb \
-    mesa-libgbm \
-    nss \
-    pango \
-    liberation-fonts >/dev/null 2>&1
+# Install packages individually to avoid stopping on single failures
+ESSENTIAL_PACKAGES=(
+    "alsa-lib"
+    "atk" 
+    "cairo"
+    "cups-libs"
+    "fontconfig"
+    "freetype"
+    "gdk-pixbuf2"
+    "glib2"
+    "gtk3"
+    "libX11"
+    "libXcomposite"
+    "libXcursor"
+    "libXdamage"
+    "libXext"
+    "libXfixes"
+    "libXi"
+    "libXrandr"
+    "libXrender"
+    "libXss"
+    "libXtst"
+    "libdrm"
+    "libxcb"
+    "nss"
+    "pango"
+    "liberation-fonts"
+)
+
+INSTALLED_COUNT=0
+for package in "${ESSENTIAL_PACKAGES[@]}"; do
+    if sudo dnf install -y "$package" >/dev/null 2>&1; then
+        INSTALLED_COUNT=$((INSTALLED_COUNT + 1))
+    else
+        print_warning "Failed to install $package, continuing..."
+    fi
+done
+
+print_status "Successfully installed $INSTALLED_COUNT/${#ESSENTIAL_PACKAGES[@]} essential packages"
+
+# Try optional packages
+OPTIONAL_PACKAGES=(
+    "dbus-glib"
+    "mesa-libgbm"
+    "vulkan-loader"
+)
+
+for package in "${OPTIONAL_PACKAGES[@]}"; do
+    sudo dnf install -y "$package" >/dev/null 2>&1 || true
+done
 
 # Step 5: Browser installation with fallback strategy
 print_header "Step 5: Browser Installation"
@@ -137,13 +159,17 @@ BROWSER_MODE="mock"
 # Try Chromium from EPEL first
 if [ "$BROWSER_INSTALLED" = false ]; then
     print_status "Attempting Chromium installation from EPEL..."
-    if sudo dnf install -y chromium >/dev/null 2>&1; then
-        if command -v chromium-browser &> /dev/null; then
-            BROWSER_PATH="/usr/bin/chromium-browser"
-            BROWSER_INSTALLED=true
-            BROWSER_MODE="production"
-            print_status "✅ Chromium installed successfully"
-        fi
+    if sudo dnf install -y chromium 2>/dev/null; then
+        # Check multiple possible paths
+        for path in "/usr/bin/chromium-browser" "/usr/bin/chromium" "/usr/lib64/chromium-browser/chromium-browser"; do
+            if [ -f "$path" ]; then
+                BROWSER_PATH="$path"
+                BROWSER_INSTALLED=true
+                BROWSER_MODE="production"
+                print_status "Chromium installed successfully at $path"
+                break
+            fi
+        done
     fi
 fi
 
@@ -151,12 +177,18 @@ fi
 if [ "$BROWSER_INSTALLED" = false ] && [ "$ARCH" = "x86_64" ]; then
     print_status "Attempting Chrome direct download..."
     CHROME_RPM="/tmp/google-chrome-stable.rpm"
-    if curl -L "https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm" -o "$CHROME_RPM" >/dev/null 2>&1; then
-        if sudo dnf install -y --nobest "$CHROME_RPM" >/dev/null 2>&1; then
+    if curl -L "https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm" -o "$CHROME_RPM" 2>/dev/null; then
+        # Try multiple installation methods
+        if sudo dnf install -y --nobest "$CHROME_RPM" 2>/dev/null; then
             BROWSER_PATH="/usr/bin/google-chrome-stable"
             BROWSER_INSTALLED=true
             BROWSER_MODE="production"
-            print_status "✅ Chrome installed successfully"
+            print_status "Chrome installed via dnf"
+        elif sudo rpm -ivh --force --nodeps "$CHROME_RPM" 2>/dev/null; then
+            BROWSER_PATH="/usr/bin/google-chrome-stable"
+            BROWSER_INSTALLED=true
+            BROWSER_MODE="production"
+            print_status "Chrome installed via rpm"
         fi
         rm -f "$CHROME_RPM"
     fi
@@ -165,11 +197,11 @@ fi
 # Try Firefox as fallback
 if [ "$BROWSER_INSTALLED" = false ]; then
     print_status "Installing Firefox as fallback..."
-    if sudo dnf install -y firefox >/dev/null 2>&1; then
+    if sudo dnf install -y firefox 2>/dev/null; then
         BROWSER_PATH="/usr/bin/firefox"
         BROWSER_INSTALLED=true
         BROWSER_MODE="production"
-        print_status "✅ Firefox installed as fallback"
+        print_status "Firefox installed as fallback"
     fi
 fi
 
@@ -178,6 +210,8 @@ if [ "$BROWSER_INSTALLED" = false ]; then
     print_warning "No browser available - using Mock mode"
     BROWSER_MODE="mock"
 fi
+
+print_status "Browser setup completed: $BROWSER_MODE mode"
 
 # Step 6: Application setup
 print_header "Step 6: Application Setup"
