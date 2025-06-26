@@ -126,6 +126,13 @@ class BrowserShieldAdmin {
             // Update active sessions count
             document.getElementById('activeSessions').textContent = this.sessions.length;
             
+            // Load current mode
+            const modeResponse = await fetch(`${this.baseUrl}/api/mode`);
+            const modeData = await modeResponse.json();
+            if (modeData.success) {
+                document.getElementById('currentMode').textContent = modeData.data.mode.toUpperCase();
+            }
+            
             // Mock proxy count
             document.getElementById('totalProxies').textContent = '5';
             
@@ -240,11 +247,11 @@ class BrowserShieldAdmin {
                                     <span class="badge bg-success status-badge">Active</span>
                                 </div>
                                 <div class="small text-muted">
-                                    <div><strong>Session ID:</strong> ${session.sessionId}</div>
-                                    <div><strong>Browser:</strong> ${session.browserType}</div>
-                                    <div><strong>Current URL:</strong> ${session.currentUrl}</div>
-                                    <div><strong>Uptime:</strong> ${this.formatUptime(session.uptime)}</div>
-                                    <div><strong>Started:</strong> ${new Date(session.startTime).toLocaleString()}</div>
+                                    <div><strong>Session ID:</strong> ${session.sessionId || 'N/A'}</div>
+                                    <div><strong>Browser:</strong> ${session.browserType || 'Chrome'}</div>
+                                    <div><strong>Current URL:</strong> ${session.currentUrl || 'about:blank'}</div>
+                                    <div><strong>Uptime:</strong> ${session.uptime ? this.formatUptime(session.uptime) : 'N/A'}</div>
+                                    <div><strong>Started:</strong> ${session.startTime ? new Date(session.startTime).toLocaleString() : 'N/A'}</div>
                                 </div>
                             </div>
                             <div class="col-md-4 text-end">

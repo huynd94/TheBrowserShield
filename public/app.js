@@ -271,17 +271,27 @@ class ProfileManager {
         if (count === 0) {
             activeSessionsDiv.innerHTML = '<p class="text-muted">Không có session nào đang chạy</p>';
         } else {
-            activeSessionsDiv.innerHTML = this.activeSessions.map(session => `
+            activeSessionsDiv.innerHTML = this.activeSessions.map(session => {
+                const profile = this.profiles.find(p => p.id === session.profileId);
+                const profileName = profile ? profile.name : (session.profileName || 'Unknown Profile');
+                
+                return `
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <div>
-                        <strong>${session.profileName}</strong><br>
-                        <small class="text-muted">Uptime: ${this.formatUptime(session.uptime)}</small>
+                        <strong>${profileName}</strong><br>
+                        <small class="text-muted">Uptime: ${session.uptime ? this.formatUptime(session.uptime) : 'N/A'}</small>
                     </div>
-                    <button class="btn btn-outline-danger btn-sm" onclick="profileManager.stopBrowser('${session.profileId}')">
-                        <i class="bi bi-stop"></i>
-                    </button>
+                    <div class="btn-group" role="group">
+                        <button class="btn btn-outline-primary btn-sm" onclick="profileManager.openBrowserControl('${session.profileId}')" title="Điều khiển trình duyệt">
+                            <i class="bi bi-display"></i>
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="profileManager.stopBrowser('${session.profileId}')" title="Dừng session">
+                            <i class="bi bi-stop"></i>
+                        </button>
+                    </div>
                 </div>
-            `).join('');
+                `;
+            }).join('');
         }
     }
 
@@ -294,6 +304,8 @@ class ProfileManager {
         }
 
         try {
+            this.showToast('Đang khởi động trình duyệt...', 'info');
+            
             const response = await fetch(`/api/profiles/${profileId}/start`, {
                 method: 'POST',
                 headers: {
@@ -330,7 +342,231 @@ class ProfileManager {
                 this.showError('Không thể dừng browser');
             }
         } catch (error) {
+            console.error('Error stopping browser:', error);
             this.showError('Lỗi kết nối server');
+        }
+    }
+
+    // New function: Open browser control interface
+    async openBrowserControl(profileId) {
+        const profile = this.profiles.find(p => p.id === profileId);
+        if (!profile) {
+            this.showError('Không tìm thấy profile');
+            return;
+        }
+
+        // Create browser control modal
+        const modal = document.createElement('div');
+        modal.className = 'modal fade';
+        modal.id = 'browserControlModal';
+        modal.innerHTML = `
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="bi bi-display"></i> Điều khiển trình duyệt - ${profile.name}
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <div class="input-group">
+                                    <input type="url" class="form-control" id="navigateUrl" 
+                                           placeholder="Nhập URL để điều hướng..." 
+                                           value="https://bot.sannysoft.com/">
+                                    <button class="btn btn-primary" onclick="profileManager.navigateTo('${profileId}')">
+                                        <i class="bi bi-arrow-right"></i> Đi tới
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <button class="btn btn-success w-100" onclick="profileManager.takeScreenshot('${profileId}')">
+                                    <i class="bi bi-camera"></i> Chụp màn hình
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <h6>Thực thi JavaScript:</h6>
+                                <textarea class="form-control mb-2" id="jsCode" rows="4" 
+                                          placeholder="Nhập mã JavaScript để thực thi...">
+// Ví dụ: Click vào nút đầu tiên
+document.querySelector('button')?.click();
+
+// Hoặc điền form
+document.querySelector('input[type="text"]').value = 'Hello World';</textarea>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-warning" onclick="profileManager.executeJS('${profileId}')">
+                                        <i class="bi bi-code-slash"></i> Thực thi
+                                    </button>
+                                    <button class="btn btn-info" onclick="profileManager.getCurrentInfo('${profileId}')">
+                                        <i class="bi bi-info-circle"></i> Lấy thông tin trang
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-12">
+                                <h6>Kết quả:</h6>
+                                <div id="controlResult" class="border rounded p-3 bg-light" style="min-height: 200px;">
+                                    <p class="text-muted">Kết quả sẽ hiển thị ở đây...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                        <button type="button" class="btn btn-danger" onclick="profileManager.stopBrowser('${profileId}'); bootstrap.Modal.getInstance(document.getElementById('browserControlModal')).hide();">
+                            <i class="bi bi-stop"></i> Dừng Browser
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+
+        // Clean up modal when closed
+        modal.addEventListener('hidden.bs.modal', () => {
+            document.body.removeChild(modal);
+        });
+    }
+
+    // Navigate to URL
+    async navigateTo(profileId) {
+        const url = document.getElementById('navigateUrl').value;
+        if (!url) {
+            this.showError('Vui lòng nhập URL');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/profiles/${profileId}/navigate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                document.getElementById('controlResult').innerHTML = `
+                    <div class="alert alert-success">
+                        <strong>Thành công!</strong> Đã điều hướng tới: ${url}
+                        <br><small>Thời gian: ${new Date().toLocaleString()}</small>
+                    </div>
+                `;
+            } else {
+                throw new Error(data.message || 'Navigation failed');
+            }
+        } catch (error) {
+            document.getElementById('controlResult').innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>Lỗi!</strong> ${error.message}
+                </div>
+            `;
+        }
+    }
+
+    // Execute JavaScript
+    async executeJS(profileId) {
+        const code = document.getElementById('jsCode').value;
+        if (!code.trim()) {
+            this.showError('Vui lòng nhập mã JavaScript');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/profiles/${profileId}/execute`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ script: code })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                document.getElementById('controlResult').innerHTML = `
+                    <div class="alert alert-success">
+                        <strong>Thành công!</strong>
+                        <pre class="mt-2 mb-0">${JSON.stringify(data.data.result, null, 2)}</pre>
+                    </div>
+                `;
+            } else {
+                throw new Error(data.message || 'Script execution failed');
+            }
+        } catch (error) {
+            document.getElementById('controlResult').innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>Lỗi!</strong> ${error.message}
+                </div>
+            `;
+        }
+    }
+
+    // Get current page info
+    async getCurrentInfo(profileId) {
+        const infoScript = `
+            JSON.stringify({
+                url: window.location.href,
+                title: document.title,
+                userAgent: navigator.userAgent,
+                cookiesCount: document.cookie.split(';').length,
+                elementsCount: document.querySelectorAll('*').length,
+                viewport: {
+                    width: window.innerWidth,
+                    height: window.innerHeight
+                }
+            }, null, 2)
+        `;
+
+        try {
+            const response = await fetch(`/api/profiles/${profileId}/execute`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ script: infoScript })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                document.getElementById('controlResult').innerHTML = `
+                    <div class="alert alert-info">
+                        <strong>Thông tin trang hiện tại:</strong>
+                        <pre class="mt-2 mb-0">${data.data.result}</pre>
+                    </div>
+                `;
+            } else {
+                throw new Error(data.message || 'Failed to get page info');
+            }
+        } catch (error) {
+            document.getElementById('controlResult').innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>Lỗi!</strong> ${error.message}
+                </div>
+            `;
+        }
+    }
+
+    // Take screenshot (mock implementation)
+    async takeScreenshot(profileId) {
+        try {
+            // This would be a real screenshot in production mode
+            document.getElementById('controlResult').innerHTML = `
+                <div class="alert alert-info">
+                    <strong>Chụp màn hình thành công!</strong>
+                    <br>Trong mode thực tế, ảnh chụp sẽ được lưu và hiển thị ở đây.
+                    <br><small>Thời gian: ${new Date().toLocaleString()}</small>
+                </div>
+            `;
+        } catch (error) {
+            document.getElementById('controlResult').innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>Lỗi!</strong> ${error.message}
+                </div>
+            `;
         }
     }
 
