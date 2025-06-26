@@ -7,7 +7,8 @@ class ProfileManager {
         this.init();
     }
 
-    init() {
+    async init() {
+        await this.loadCurrentMode();
         this.setupEventListeners();
         this.loadProfiles();
         this.loadActiveSessions();
@@ -16,6 +17,28 @@ class ProfileManager {
         setInterval(() => {
             this.loadActiveSessions();
         }, 30000);
+    }
+
+    async loadCurrentMode() {
+        try {
+            const response = await fetch('/api/mode');
+            const data = await response.json();
+            if (data.success) {
+                const mode = data.data.currentMode;
+                const modeDisplay = mode === 'mock' ? 'Mock Mode' : 
+                                  mode === 'production' ? 'Production Mode' : 
+                                  mode === 'firefox' ? 'Firefox Mode' : 'Unknown Mode';
+                
+                // Update mode display if element exists
+                const modeIndicator = document.querySelector('.mode-indicator');
+                if (modeIndicator) {
+                    modeIndicator.textContent = modeDisplay;
+                    modeIndicator.className = `mode-indicator badge bg-${mode === 'mock' ? 'warning' : mode === 'firefox' ? 'success' : 'primary'}`;
+                }
+            }
+        } catch (error) {
+            console.warn('Failed to load current mode:', error);
+        }
     }
 
     setupEventListeners() {

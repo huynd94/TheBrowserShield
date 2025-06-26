@@ -1,0 +1,11 @@
+{
+  "mode": "firefox",
+  "lastChanged": "2025-06-26T15:08:00.000Z",
+  "capabilities": {
+    "realBrowser": true,
+    "screenshots": true,
+    "websiteInteraction": true,
+    "firefoxAutomation": true,
+    "alternativeFingerprinting": true
+  }
+}

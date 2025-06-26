@@ -316,10 +316,37 @@ document.querySelector('h1')?.textContent</textarea>
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
+            loadCurrentMode();
             loadProfileInfo();
             startUptimeCounter();
             logToConsole('Remote browser control initialized');
         });
+
+        async function loadCurrentMode() {
+            try {
+                const response = await fetch('/api/mode');
+                const data = await response.json();
+                if (data.success) {
+                    const mode = data.data.currentMode;
+                    const modeDisplay = mode === 'mock' ? 'Mock Mode' : 
+                                      mode === 'production' ? 'Production Mode' : 
+                                      mode === 'firefox' ? 'Firefox Mode' : 'Unknown Mode';
+                    
+                    document.getElementById('browserMode').textContent = modeDisplay;
+                    
+                    // Update mock browser display based on mode
+                    const mockBrowser = document.querySelector('.mock-browser p.small');
+                    if (mockBrowser) {
+                        mockBrowser.innerHTML = `
+                            Current Mode: <strong>${modeDisplay}</strong><br>
+                            ${mode === 'mock' ? 'Switch to Production or Firefox Mode for real browser control' : 'Real browser automation available'}
+                        `;
+                    }
+                }
+            } catch (error) {
+                console.warn('Failed to load current mode:', error);
+            }
+        }
 
         function loadProfileInfo() {
             // In real implementation, load from API

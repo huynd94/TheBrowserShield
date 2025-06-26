@@ -44,12 +44,35 @@ class BrowserShieldAdmin {
     }
 
     async loadInitialData() {
+        await this.loadCurrentMode();
         await Promise.all([
             this.loadProfiles(),
             this.loadSessions(),
             this.loadLogs(),
             this.updateStats()
         ]);
+    }
+
+    async loadCurrentMode() {
+        try {
+            const response = await fetch('/api/mode');
+            const data = await response.json();
+            if (data.success) {
+                const mode = data.data.currentMode;
+                const modeDisplay = mode === 'mock' ? 'Mock Mode' : 
+                                  mode === 'production' ? 'Production Mode' : 
+                                  mode === 'firefox' ? 'Firefox Mode' : 'Unknown Mode';
+                
+                // Update mode display in header
+                const modeIndicator = document.querySelector('.mode-indicator');
+                if (modeIndicator) {
+                    modeIndicator.textContent = modeDisplay;
+                    modeIndicator.className = `mode-indicator badge bg-${mode === 'mock' ? 'warning' : mode === 'firefox' ? 'success' : 'primary'}`;
+                }
+            }
+        } catch (error) {
+            console.warn('Failed to load current mode:', error);
+        }
     }
 
     async loadProfiles() {
