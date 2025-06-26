@@ -177,6 +177,34 @@ sudo dnf install -y firefox
 
 The system automatically checks browser availability and only allows switching to supported modes.
 
+## System Update & Maintenance
+
+### Quick Update Commands:
+```bash
+# Update from GitHub (VPS)
+curl -sSL https://raw.githubusercontent.com/huynd94/TheBrowserShield/main/scripts/update-system.sh | bash
+
+# Cleanup unused scripts
+./scripts/cleanup-unused-scripts.sh
+
+# Monitor system health
+./scripts/monitor.sh
+```
+
+### Available Scripts:
+- **update-system.sh**: Downloads latest code from GitHub, preserves data, restarts service
+- **cleanup-unused-scripts.sh**: Removes obsolete installation scripts
+- **install-browsershield-fixed-robust.sh**: Main installation script for Oracle Linux 9
+- **monitor.sh**: System health monitoring and diagnostics
+
+### Update Features:
+- Automatic backup before updates
+- Data preservation (profiles, proxy pool, mode config)
+- Syntax validation before restart
+- Rollback capability on failures
+- Health check verification
+- Service management automation
+
 - June 25, 2025: Complete anti-detect browser profile manager with advanced features
 - **Phase 1**: Core API and profile management system
 - **Phase 2**: Enhanced features implementation including:
