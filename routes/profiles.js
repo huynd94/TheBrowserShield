@@ -1,7 +1,7 @@
 const express = require('express');
 const ProfileService = require('../services/ProfileService');
-// Use MockBrowserService for Replit demo, switch to BrowserService for production
-const BrowserService = require('../services/MockBrowserService');
+// Use BrowserService for Replit demo, switch to BrowserService for production
+const BrowserService = require('../services/BrowserService');
 const ProfileLogService = require('../services/ProfileLogService');
 const logger = require('../utils/logger');
 
