@@ -16,6 +16,7 @@
     "puppeteer": "^24.10.2",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "puppeteer-firefox": "^0.5.1",
     "uuid": "^11.1.0"
   }
 }

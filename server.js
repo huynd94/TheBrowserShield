@@ -178,6 +178,10 @@ app.get('/mode-manager', (req, res) => {
 const ModeSwitcher = require('./config/mode-switcher');
 const modeSwitcher = new ModeSwitcher();
 
+// Initialize browser service based on current mode
+const BrowserServiceClass = modeSwitcher.getBrowserServiceClass();
+const browserService = new BrowserServiceClass();
+
 // Mode endpoints
 app.get('/api/mode', (req, res) => {
     try {
@@ -321,7 +325,7 @@ app.delete('/api/profiles/:id', (req, res) => {
     });
 });
 
-app.post('/api/profiles/:id/start', (req, res) => {
+app.post('/api/profiles/:id/start', async (req, res) => {
     const profile = profiles.find(p => p.id === req.params.id);
     if (!profile) {
         return res.status(404).json({
@@ -340,29 +344,41 @@ app.post('/api/profiles/:id/start', (req, res) => {
         });
     }
 
-    // Mock browser session
-    const session = {
-        profileId: req.params.id,
-        sessionId: uuidv4(),
-        status: 'mock_active',
-        startTime: Date.now(),
-        browserType: 'mock',
-        currentUrl: req.body.autoNavigateUrl || profile.autoNavigateUrl || 'about:blank'
-    };
+    try {
+        // Use actual browser service based on current mode
+        const autoNavigateUrl = req.body.autoNavigateUrl || profile.autoNavigateUrl;
+        const sessionInfo = await browserService.startBrowser(req.params.id, autoNavigateUrl);
+        
+        // Add to active sessions
+        const session = {
+            profileId: req.params.id,
+            sessionId: sessionInfo.sessionId || uuidv4(),
+            status: sessionInfo.status || 'active',
+            startTime: Date.now(),
+            browserType: modeSwitcher.getCurrentModeInfo().currentMode,
+            currentUrl: sessionInfo.currentUrl || autoNavigateUrl || 'about:blank'
+        };
 
-    activeSessions.push(session);
+        activeSessions.push(session);
 
-    res.json({
-        success: true,
-        message: 'Mock browser session started',
-        session: {
-            ...session,
-            uptime: 0
-        }
-    });
+        res.json({
+            success: true,
+            message: `Browser session started in ${modeSwitcher.getCurrentModeInfo().currentMode} mode`,
+            session: {
+                ...session,
+                uptime: 0
+            }
+        });
+    } catch (error) {
+        console.error('Error starting browser session:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to start browser session: ' + error.message
+        });
+    }
 });
 
-app.post('/api/profiles/:id/stop', (req, res) => {
+app.post('/api/profiles/:id/stop', async (req, res) => {
     const sessionIndex = activeSessions.findIndex(s => s.profileId === req.params.id);
     if (sessionIndex === -1) {
         return res.status(404).json({
@@ -371,13 +387,24 @@ app.post('/api/profiles/:id/stop', (req, res) => {
         });
     }
 
-    const stoppedSession = activeSessions.splice(sessionIndex, 1)[0];
+    try {
+        // Stop browser session using actual browser service
+        await browserService.stopBrowser(req.params.id);
+        
+        const stoppedSession = activeSessions.splice(sessionIndex, 1)[0];
 
-    res.json({
-        success: true,
-        message: 'Mock browser session stopped',
-        session: stoppedSession
-    });
+        res.json({
+            success: true,
+            message: `Browser session stopped in ${modeSwitcher.getCurrentModeInfo().currentMode} mode`,
+            session: stoppedSession
+        });
+    } catch (error) {
+        console.error('Error stopping browser session:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to stop browser session: ' + error.message
+        });
+    }
 });
 
 app.get('/api/profiles/sessions/active', (req, res) => {
@@ -393,8 +420,8 @@ app.get('/api/profiles/sessions/active', (req, res) => {
     });
 });
 
-// Mock navigation endpoint
-app.post('/api/profiles/:id/navigate', (req, res) => {
+// Navigation endpoint
+app.post('/api/profiles/:id/navigate', async (req, res) => {
     const { url } = req.body;
     const session = activeSessions.find(s => s.profileId === req.params.id);
     
@@ -405,17 +432,29 @@ app.post('/api/profiles/:id/navigate', (req, res) => {
         });
     }
 
-    session.currentUrl = url;
-    
-    res.json({
-        success: true,
-        message: `Mock navigation to ${url}`,
-        currentUrl: url
-    });
+    try {
+        // Use actual browser service for navigation
+        const result = await browserService.navigateToUrl(req.params.id, url);
+        
+        // Update session URL
+        session.currentUrl = url;
+        
+        res.json({
+            success: true,
+            message: `Navigation completed in ${modeSwitcher.getCurrentModeInfo().currentMode} mode`,
+            data: result
+        });
+    } catch (error) {
+        console.error('Error navigating:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to navigate: ' + error.message
+        });
+    }
 });
 
-// Mock script execution endpoint
-app.post('/api/profiles/:id/execute', (req, res) => {
+// Script execution endpoint
+app.post('/api/profiles/:id/execute', async (req, res) => {
     const { script } = req.body;
     const session = activeSessions.find(s => s.profileId === req.params.id);
     
@@ -426,11 +465,22 @@ app.post('/api/profiles/:id/execute', (req, res) => {
         });
     }
     
-    res.json({
-        success: true,
-        message: 'Mock script execution completed',
-        result: `Mock result for: ${script.substring(0, 50)}...`
-    });
+    try {
+        // Use actual browser service for script execution
+        const result = await browserService.executeScript(req.params.id, script);
+        
+        res.json({
+            success: true,
+            message: `Script executed in ${modeSwitcher.getCurrentModeInfo().currentMode} mode`,
+            data: result
+        });
+    } catch (error) {
+        console.error('Error executing script:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to execute script: ' + error.message
+        });
+    }
 });
 
 // Error handling

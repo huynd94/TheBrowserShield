@@ -1,4 +1,4 @@
-const { createFirefoxBrowserWithProfile } = require('../config/firefox-puppeteer');
+const { createFirefoxBrowserWithProfile } = require('../config/firefox-puppeteer-simple');
 const logger = require('../utils/logger');
 
 /**

@@ -1,8 +1,8 @@
-const puppeteer = require('puppeteer-firefox');
+const puppeteer = require('puppeteer');
 const puppeteerExtra = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 
-// Add stealth plugin for Firefox
+// Add stealth plugin for Firefox simulation
 puppeteerExtra.use(StealthPlugin());
 
 /**
@@ -34,11 +34,8 @@ function getFirefoxExecutablePath() {
  * @returns {Promise<Object>} Browser instance and page
  */
 async function createFirefoxBrowserWithProfile(profile) {
-    const firefoxPath = getFirefoxExecutablePath();
-    
+    // Use Chrome with Firefox fingerprinting for compatibility in Replit
     const launchOptions = {
-        product: 'firefox',
-        executablePath: firefoxPath,
         headless: true,
         args: [
             '--no-sandbox',
@@ -46,10 +43,7 @@ async function createFirefoxBrowserWithProfile(profile) {
             '--disable-dev-shm-usage',
             '--disable-gpu',
             '--no-first-run',
-            '--disable-extensions',
-            '--disable-plugins',
-            '--disable-images',
-            '--disable-javascript', // Will be enabled per profile
+            '--single-process'
         ]
     };
 
