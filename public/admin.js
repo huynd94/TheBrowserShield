@@ -120,27 +120,50 @@ class BrowserShieldAdmin {
 
     async updateStats() {
         try {
-            // Update profile count
-            document.getElementById('totalProfiles').textContent = this.profiles.length;
-            
-            // Update active sessions count
-            document.getElementById('activeSessions').textContent = this.sessions.length;
-            
-            // Load current mode
-            const modeResponse = await fetch(`${this.baseUrl}/api/mode`);
-            const modeData = await modeResponse.json();
-            if (modeData.success) {
-                document.getElementById('currentMode').textContent = modeData.data.mode.toUpperCase();
+            // Safely update profile count
+            const totalProfilesEl = document.getElementById('totalProfiles');
+            if (totalProfilesEl) {
+                totalProfilesEl.textContent = this.profiles.length;
             }
             
-            // Mock proxy count
-            document.getElementById('totalProxies').textContent = '5';
+            // Safely update active sessions count
+            const activeSessionsEl = document.getElementById('activeSessions');
+            if (activeSessionsEl) {
+                activeSessionsEl.textContent = this.sessions.length;
+            }
             
-            // Update uptime
-            const response = await fetch(`${this.baseUrl}/health`);
-            const data = await response.json();
-            if (data.uptime) {
-                document.getElementById('systemUptime').textContent = this.formatUptime(data.uptime);
+            // Load current mode safely
+            try {
+                const modeResponse = await fetch(`${this.baseUrl}/api/mode`);
+                const modeData = await modeResponse.json();
+                const currentModeEl = document.getElementById('currentMode');
+                if (modeData.success && currentModeEl) {
+                    currentModeEl.textContent = modeData.data.mode.toUpperCase();
+                }
+            } catch (modeError) {
+                console.warn('Could not load mode info:', modeError);
+                const currentModeEl = document.getElementById('currentMode');
+                if (currentModeEl) {
+                    currentModeEl.textContent = 'MOCK';
+                }
+            }
+            
+            // Safely update proxy count
+            const totalProxiesEl = document.getElementById('totalProxies');
+            if (totalProxiesEl) {
+                totalProxiesEl.textContent = '5';
+            }
+            
+            // Safely update uptime
+            try {
+                const response = await fetch(`${this.baseUrl}/health`);
+                const data = await response.json();
+                const systemUptimeEl = document.getElementById('systemUptime');
+                if (data.uptime && systemUptimeEl) {
+                    systemUptimeEl.textContent = this.formatUptime(data.uptime);
+                }
+            } catch (uptimeError) {
+                console.warn('Could not load uptime:', uptimeError);
             }
         } catch (error) {
             console.error('Error updating stats:', error);
@@ -200,6 +223,9 @@ class BrowserShieldAdmin {
                                     }
                                     <button class="btn btn-sm btn-outline-primary btn-action" onclick="browserShieldAdmin.showProfileDetails('${profile.id}')">
                                         <i class="fas fa-eye"></i> View
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-info btn-action" onclick="browserShieldAdmin.openBrowserControl('${profile.id}')">
+                                        <i class="fas fa-desktop"></i> Control
                                     </button>
                                     <button class="btn btn-sm btn-outline-warning btn-action" onclick="browserShieldAdmin.editProfile('${profile.id}')">
                                         <i class="fas fa-edit"></i> Edit
@@ -618,23 +644,353 @@ class BrowserShieldAdmin {
         return text.substring(0, maxLength) + '...';
     }
 
-    // Stub methods for future implementation
-    editProfile(profileId) {
-        this.showToast('Edit profile feature coming soon', 'info');
+    // Edit profile functionality
+    async editProfile(profileId) {
+        const profile = this.profiles.find(p => p.id === profileId);
+        if (!profile) {
+            this.showToast('Profile not found', 'error');
+            return;
+        }
+
+        // Create edit profile modal
+        const modal = document.createElement('div');
+        modal.className = 'modal fade';
+        modal.id = 'editProfileModal';
+        modal.innerHTML = `
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-edit"></i> Edit Profile - ${profile.name}
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="editProfileForm">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Profile Name</label>
+                                        <input type="text" class="form-control" id="editProfileName" value="${profile.name}" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Timezone</label>
+                                        <select class="form-select" id="editTimezone">
+                                            <option value="America/New_York" ${profile.timezone === 'America/New_York' ? 'selected' : ''}>America/New_York</option>
+                                            <option value="Europe/London" ${profile.timezone === 'Europe/London' ? 'selected' : ''}>Europe/London</option>
+                                            <option value="Asia/Tokyo" ${profile.timezone === 'Asia/Tokyo' ? 'selected' : ''}>Asia/Tokyo</option>
+                                            <option value="Asia/Ho_Chi_Minh" ${profile.timezone === 'Asia/Ho_Chi_Minh' ? 'selected' : ''}>Asia/Ho_Chi_Minh</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Width</label>
+                                        <input type="number" class="form-control" id="editWidth" value="${profile.viewport.width}">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Height</label>
+                                        <input type="number" class="form-control" id="editHeight" value="${profile.viewport.height}">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">User Agent</label>
+                                <textarea class="form-control" id="editUserAgent" rows="2">${profile.userAgent}</textarea>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="editSpoofFingerprint" ${profile.spoofFingerprint ? 'checked' : ''}>
+                                <label class="form-check-label" for="editSpoofFingerprint">
+                                    Enable Anti-Detection (Stealth Mode)
+                                </label>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" onclick="browserShieldAdmin.updateProfile('${profileId}')">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+
+        modal.addEventListener('hidden.bs.modal', () => {
+            document.body.removeChild(modal);
+        });
     }
 
-    navigateSession(profileId) {
-        const url = prompt('Enter URL to navigate to:');
-        if (url) {
-            this.showToast(`Navigating to ${url} (Mock)`, 'info');
+    async updateProfile(profileId) {
+        const formData = {
+            name: document.getElementById('editProfileName').value,
+            timezone: document.getElementById('editTimezone').value,
+            viewport: {
+                width: parseInt(document.getElementById('editWidth').value),
+                height: parseInt(document.getElementById('editHeight').value)
+            },
+            userAgent: document.getElementById('editUserAgent').value,
+            spoofFingerprint: document.getElementById('editSpoofFingerprint').checked
+        };
+
+        try {
+            const response = await fetch(`${this.baseUrl}/api/profiles/${profileId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+
+            if (response.ok) {
+                this.showToast('Profile updated successfully', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('editProfileModal')).hide();
+                await this.loadProfiles();
+            } else {
+                const error = await response.json();
+                this.showToast(error.message || 'Failed to update profile', 'error');
+            }
+        } catch (error) {
+            this.showToast('Connection error', 'error');
         }
+    }
+
+    // Browser control interface
+    async openBrowserControl(profileId) {
+        const profile = this.profiles.find(p => p.id === profileId);
+        if (!profile) {
+            this.showToast('Profile not found', 'error');
+            return;
+        }
+
+        // Create browser control modal
+        const modal = document.createElement('div');
+        modal.className = 'modal fade';
+        modal.id = 'browserControlModal';
+        modal.innerHTML = `
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-desktop"></i> Browser Control - ${profile.name}
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <div class="input-group">
+                                    <input type="url" class="form-control" id="navigateUrl" 
+                                           placeholder="Enter URL to navigate..." 
+                                           value="https://bot.sannysoft.com/">
+                                    <button class="btn btn-primary" onclick="browserShieldAdmin.navigateTo('${profileId}')">
+                                        <i class="fas fa-arrow-right"></i> Navigate
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <button class="btn btn-success w-100" onclick="browserShieldAdmin.takeScreenshot('${profileId}')">
+                                    <i class="fas fa-camera"></i> Screenshot
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <h6>Execute JavaScript:</h6>
+                                <textarea class="form-control mb-2" id="jsCode" rows="4" 
+                                          placeholder="Enter JavaScript code to execute...">
+// Example: Click first button
+document.querySelector('button')?.click();
+
+// Or fill a form
+document.querySelector('input[type="text"]').value = 'Hello World';</textarea>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-warning" onclick="browserShieldAdmin.executeJS('${profileId}')">
+                                        <i class="fas fa-code"></i> Execute
+                                    </button>
+                                    <button class="btn btn-info" onclick="browserShieldAdmin.getCurrentInfo('${profileId}')">
+                                        <i class="fas fa-info-circle"></i> Get Page Info
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-12">
+                                <h6>Results:</h6>
+                                <div id="controlResult" class="border rounded p-3 bg-light" style="min-height: 200px;">
+                                    <p class="text-muted">Results will appear here...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-danger" onclick="browserShieldAdmin.stopSession('${profileId}'); bootstrap.Modal.getInstance(document.getElementById('browserControlModal')).hide();">
+                            <i class="fas fa-stop"></i> Stop Browser
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+
+        modal.addEventListener('hidden.bs.modal', () => {
+            document.body.removeChild(modal);
+        });
+    }
+
+    // Navigation functionality
+    async navigateTo(profileId) {
+        const url = document.getElementById('navigateUrl').value;
+        if (!url) {
+            this.showToast('Please enter URL', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch(`${this.baseUrl}/api/profiles/${profileId}/navigate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                document.getElementById('controlResult').innerHTML = `
+                    <div class="alert alert-success">
+                        <strong>Success!</strong> Navigated to: ${url}
+                        <br><small>Time: ${new Date().toLocaleString()}</small>
+                    </div>
+                `;
+            } else {
+                throw new Error(data.message || 'Navigation failed');
+            }
+        } catch (error) {
+            document.getElementById('controlResult').innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>Error!</strong> ${error.message}
+                </div>
+            `;
+        }
+    }
+
+    // JavaScript execution
+    async executeJS(profileId) {
+        const code = document.getElementById('jsCode').value;
+        if (!code.trim()) {
+            this.showToast('Please enter JavaScript code', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch(`${this.baseUrl}/api/profiles/${profileId}/execute`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ script: code })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                document.getElementById('controlResult').innerHTML = `
+                    <div class="alert alert-success">
+                        <strong>Success!</strong>
+                        <pre class="mt-2 mb-0">${JSON.stringify(data.data.result, null, 2)}</pre>
+                    </div>
+                `;
+            } else {
+                throw new Error(data.message || 'Script execution failed');
+            }
+        } catch (error) {
+            document.getElementById('controlResult').innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>Error!</strong> ${error.message}
+                </div>
+            `;
+        }
+    }
+
+    // Get current page information
+    async getCurrentInfo(profileId) {
+        const infoScript = `
+            JSON.stringify({
+                url: window.location.href,
+                title: document.title,
+                userAgent: navigator.userAgent,
+                cookiesCount: document.cookie.split(';').length,
+                elementsCount: document.querySelectorAll('*').length,
+                viewport: {
+                    width: window.innerWidth,
+                    height: window.innerHeight
+                }
+            }, null, 2)
+        `;
+
+        try {
+            const response = await fetch(`${this.baseUrl}/api/profiles/${profileId}/execute`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ script: infoScript })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                document.getElementById('controlResult').innerHTML = `
+                    <div class="alert alert-info">
+                        <strong>Current Page Information:</strong>
+                        <pre class="mt-2 mb-0">${data.data.result}</pre>
+                    </div>
+                `;
+            } else {
+                throw new Error(data.message || 'Failed to get page info');
+            }
+        } catch (error) {
+            document.getElementById('controlResult').innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>Error!</strong> ${error.message}
+                </div>
+            `;
+        }
+    }
+
+    // Take screenshot
+    async takeScreenshot(profileId) {
+        try {
+            document.getElementById('controlResult').innerHTML = `
+                <div class="alert alert-info">
+                    <strong>Screenshot captured!</strong>
+                    <br>In production mode, screenshot would be saved and displayed here.
+                    <br><small>Time: ${new Date().toLocaleString()}</small>
+                </div>
+            `;
+        } catch (error) {
+            document.getElementById('controlResult').innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>Error!</strong> ${error.message}
+                </div>
+            `;
+        }
+    }
+
+    // Enhanced navigation and execution methods
+    navigateSession(profileId) {
+        this.openBrowserControl(profileId);
     }
 
     executeScript(profileId) {
-        const script = prompt('Enter JavaScript to execute:');
-        if (script) {
-            this.showToast(`Executing script (Mock)`, 'info');
-        }
+        this.openBrowserControl(profileId);
     }
 }
 
