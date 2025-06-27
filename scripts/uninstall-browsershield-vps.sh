@@ -266,88 +266,163 @@ else
 fi
 
 # Remove management scripts
-log "Removing management scripts..."
-SCRIPTS_TO_REMOVE=(
-    "/home/opc/monitor-browsershield.sh"
-    "/home/opc/backup-browsershield.sh"
-    "/home/opc/deploy-oracle-linux-production.sh"
-    "/home/opc/vps-update-oracle.sh"
-    "/home/opc/configure-production-vps.sh"
-)
+if [ "$DRY_RUN" = true ]; then
+    log "DRY RUN - Would remove management scripts..."
+    SCRIPTS_TO_REMOVE=(
+        "/home/opc/monitor-browsershield.sh"
+        "/home/opc/backup-browsershield.sh"
+        "/home/opc/deploy-oracle-linux-production.sh"
+        "/home/opc/vps-update-oracle.sh"
+        "/home/opc/configure-production-vps.sh"
+    )
 
-for script in "${SCRIPTS_TO_REMOVE[@]}"; do
-    if [ -f "$script" ]; then
-        rm -f "$script"
-        log "Removed script: $script"
-    fi
-done
+    for script in "${SCRIPTS_TO_REMOVE[@]}"; do
+        if [ -f "$script" ]; then
+            info "Would remove script: $script"
+        fi
+    done
+else
+    log "Removing management scripts..."
+    SCRIPTS_TO_REMOVE=(
+        "/home/opc/monitor-browsershield.sh"
+        "/home/opc/backup-browsershield.sh"
+        "/home/opc/deploy-oracle-linux-production.sh"
+        "/home/opc/vps-update-oracle.sh"
+        "/home/opc/configure-production-vps.sh"
+    )
+
+    for script in "${SCRIPTS_TO_REMOVE[@]}"; do
+        if [ -f "$script" ]; then
+            rm -f "$script"
+            log "Removed script: $script"
+        fi
+    done
+fi
 
 # Remove log rotation configuration
-log "Removing log rotation configuration..."
-if [ -f "/etc/logrotate.d/browsershield" ]; then
-    sudo rm -f "/etc/logrotate.d/browsershield"
-    log "Log rotation configuration removed"
+if [ "$DRY_RUN" = true ]; then
+    log "DRY RUN - Would remove log rotation configuration..."
+    if [ -f "/etc/logrotate.d/browsershield" ]; then
+        info "Would remove log rotation configuration"
+    else
+        info "Log rotation configuration not found"
+    fi
 else
-    info "Log rotation configuration not found"
+    log "Removing log rotation configuration..."
+    if [ -f "/etc/logrotate.d/browsershield" ]; then
+        sudo rm -f "/etc/logrotate.d/browsershield"
+        log "Log rotation configuration removed"
+    else
+        info "Log rotation configuration not found"
+    fi
 fi
 
 # Remove log files
-log "Removing log files..."
-LOG_FILES=(
-    "/var/log/browsershield.log"
-    "/var/log/browsershield-monitor.log"
-    "/var/log/browsershield-backup.log"
-)
+if [ "$DRY_RUN" = true ]; then
+    log "DRY RUN - Would remove log files..."
+    LOG_FILES=(
+        "/var/log/browsershield.log"
+        "/var/log/browsershield-monitor.log"
+        "/var/log/browsershield-backup.log"
+    )
 
-for logfile in "${LOG_FILES[@]}"; do
-    if [ -f "$logfile" ]; then
-        sudo rm -f "$logfile"
-        log "Removed log file: $logfile"
-    fi
-done
+    for logfile in "${LOG_FILES[@]}"; do
+        if [ -f "$logfile" ]; then
+            info "Would remove log file: $logfile"
+        fi
+    done
+else
+    log "Removing log files..."
+    LOG_FILES=(
+        "/var/log/browsershield.log"
+        "/var/log/browsershield-monitor.log"
+        "/var/log/browsershield-backup.log"
+    )
 
-# Clean systemd journal logs for the service
-log "Cleaning systemd journal logs..."
-sudo journalctl --vacuum-time=1s --identifier=$SERVICE_NAME 2>/dev/null || true
-
-# Optional: Remove Node.js and Chrome (ask user)
-echo
-read -p "Remove Node.js? (y/N): " REMOVE_NODEJS
-if [[ $REMOVE_NODEJS =~ ^[Yy]$ ]]; then
-    log "Removing Node.js..."
-    sudo dnf remove -y nodejs npm
-    log "Node.js removed"
+    for logfile in "${LOG_FILES[@]}"; do
+        if [ -f "$logfile" ]; then
+            sudo rm -f "$logfile"
+            log "Removed log file: $logfile"
+        fi
+    done
 fi
 
-read -p "Remove Google Chrome? (y/N): " REMOVE_CHROME
-if [[ $REMOVE_CHROME =~ ^[Yy]$ ]]; then
-    log "Removing Google Chrome..."
-    sudo dnf remove -y google-chrome-stable
-    if [ -f "/etc/yum.repos.d/google-chrome.repo" ]; then
-        sudo rm -f "/etc/yum.repos.d/google-chrome.repo"
+# Clean systemd journal logs for the service
+if [ "$DRY_RUN" = true ]; then
+    log "DRY RUN - Would clean systemd journal logs..."
+    info "Would clean journal logs for service: $SERVICE_NAME"
+else
+    log "Cleaning systemd journal logs..."
+    sudo journalctl --vacuum-time=1s --identifier=$SERVICE_NAME 2>/dev/null || true
+fi
+
+# Optional: Remove Node.js and Chrome (ask user)
+if [ "$DRY_RUN" = true ]; then
+    log "DRY RUN - Would ask about removing Node.js and Chrome..."
+    if command -v node &> /dev/null; then
+        info "Would ask to remove Node.js"
     fi
-    log "Google Chrome removed"
+    if command -v google-chrome &> /dev/null; then
+        info "Would ask to remove Google Chrome"
+    fi
+else
+    echo
+    if [ "$FORCE_DELETE" != true ]; then
+        read -p "Remove Node.js? (y/N): " REMOVE_NODEJS
+        if [[ $REMOVE_NODEJS =~ ^[Yy]$ ]]; then
+            log "Removing Node.js..."
+            sudo dnf remove -y nodejs npm
+            log "Node.js removed"
+        fi
+
+        read -p "Remove Google Chrome? (y/N): " REMOVE_CHROME
+        if [[ $REMOVE_CHROME =~ ^[Yy]$ ]]; then
+            log "Removing Google Chrome..."
+            sudo dnf remove -y google-chrome-stable
+            if [ -f "/etc/yum.repos.d/google-chrome.repo" ]; then
+                sudo rm -f "/etc/yum.repos.d/google-chrome.repo"
+            fi
+            log "Google Chrome removed"
+        fi
+    else
+        info "Force mode: Skipping optional Node.js and Chrome removal"
+    fi
 fi
 
 # Remove any remaining processes
-log "Checking for remaining BrowserShield processes..."
-BROWSER_PROCESSES=$(ps aux | grep -E "(browsershield|chrome.*--user-data-dir.*browsershield)" | grep -v grep | wc -l)
-if [ "$BROWSER_PROCESSES" -gt 0 ]; then
-    warn "Found $BROWSER_PROCESSES remaining processes, terminating..."
-    pkill -f "browsershield" 2>/dev/null || true
-    pkill -f "chrome.*--user-data-dir.*browsershield" 2>/dev/null || true
-    sleep 2
-    pkill -9 -f "browsershield" 2>/dev/null || true
-    pkill -9 -f "chrome.*--user-data-dir.*browsershield" 2>/dev/null || true
-    log "Remaining processes terminated"
+if [ "$DRY_RUN" = true ]; then
+    log "DRY RUN - Would check for remaining processes..."
+    BROWSER_PROCESSES=$(ps aux | grep -E "(browsershield|chrome.*--user-data-dir.*browsershield)" | grep -v grep | wc -l)
+    if [ "$BROWSER_PROCESSES" -gt 0 ]; then
+        info "Would terminate $BROWSER_PROCESSES remaining processes"
+    else
+        info "No remaining processes found"
+    fi
 else
-    info "No remaining processes found"
+    log "Checking for remaining BrowserShield processes..."
+    BROWSER_PROCESSES=$(ps aux | grep -E "(browsershield|chrome.*--user-data-dir.*browsershield)" | grep -v grep | wc -l)
+    if [ "$BROWSER_PROCESSES" -gt 0 ]; then
+        warn "Found $BROWSER_PROCESSES remaining processes, terminating..."
+        pkill -f "browsershield" 2>/dev/null || true
+        pkill -f "chrome.*--user-data-dir.*browsershield" 2>/dev/null || true
+        sleep 2
+        pkill -9 -f "browsershield" 2>/dev/null || true
+        pkill -9 -f "chrome.*--user-data-dir.*browsershield" 2>/dev/null || true
+        log "Remaining processes terminated"
+    else
+        info "No remaining processes found"
+    fi
 fi
 
 # Clean up temporary files
-log "Cleaning up temporary files..."
-rm -rf /tmp/browsershield* 2>/dev/null || true
-rm -rf /tmp/TheBrowserShield* 2>/dev/null || true
+if [ "$DRY_RUN" = true ]; then
+    log "DRY RUN - Would clean up temporary files..."
+    info "Would remove /tmp/browsershield* and /tmp/TheBrowserShield*"
+else
+    log "Cleaning up temporary files..."
+    rm -rf /tmp/browsershield* 2>/dev/null || true
+    rm -rf /tmp/TheBrowserShield* 2>/dev/null || true
+fi
 
 # Verify uninstall
 if [ "$DRY_RUN" = true ]; then
