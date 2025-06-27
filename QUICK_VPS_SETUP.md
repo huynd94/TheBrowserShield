@@ -2,6 +2,17 @@
 
 ## Triển khai nhanh (One-Click)
 
+### Script quản lý tổng hợp VPS
+
+```bash
+# Tải script quản lý tổng hợp
+curl -fsSL https://raw.githubusercontent.com/huynd94/TheBrowserShield/main/scripts/vps-manager.sh -o vps-manager.sh
+chmod +x vps-manager.sh
+
+# Triển khai hoàn chỉnh
+./vps-manager.sh deploy
+```
+
 ### Lệnh triển khai tự động hoàn chỉnh
 
 ```bash
@@ -54,7 +65,23 @@ curl -4 icanhazip.com
 
 ## Quản lý service
 
-### Script quản lý nhanh
+### Script quản lý VPS tổng hợp
+
+```bash
+# Script quản lý toàn diện
+./vps-manager.sh deploy        # Triển khai mới
+./vps-manager.sh update        # Cập nhật hệ thống
+./vps-manager.sh configure     # Cấu hình production
+./vps-manager.sh status        # Trạng thái chi tiết
+./vps-manager.sh logs          # Xem logs realtime
+./vps-manager.sh restart       # Khởi động lại
+./vps-manager.sh backup        # Tạo backup thủ công
+./vps-manager.sh monitor       # Health check
+./vps-manager.sh uninstall     # Gỡ cài đặt hoàn toàn
+./vps-manager.sh help          # Hướng dẫn chi tiết
+```
+
+### Script quản lý nhanh (local)
 
 ```bash
 cd /home/opc/browsershield
@@ -160,6 +187,56 @@ Logs được lưu tại:
 - Service logs: `sudo journalctl -u browsershield -f`
 - Monitor logs: `tail -f /var/log/browsershield-monitor.log`
 - Backup logs: `tail -f /var/log/browsershield-backup.log`
+
+## Gỡ cài đặt hoàn toàn
+
+### Gỡ cài đặt tự động
+
+```bash
+# Gỡ cài đặt hoàn toàn BrowserShield
+curl -fsSL https://raw.githubusercontent.com/huynd94/TheBrowserShield/main/scripts/uninstall-browsershield-vps.sh | bash
+```
+
+### Gỡ cài đặt qua VPS Manager
+
+```bash
+# Sử dụng script quản lý
+./vps-manager.sh uninstall
+```
+
+### Những gì sẽ bị xóa
+
+Script gỡ cài đặt sẽ xóa:
+- ✅ Application files (`/home/opc/browsershield`)
+- ✅ Systemd service (`browsershield.service`)
+- ✅ Firewall rules (port 5000)
+- ✅ Cron jobs (monitoring, backup)
+- ✅ Log files và configurations
+- ✅ Management scripts
+- ✅ Tất cả processes đang chạy
+
+### Tùy chọn bảo tồn
+
+Script sẽ hỏi bạn có muốn xóa:
+- Node.js (có thể dùng cho project khác)
+- Google Chrome (có thể dùng cho mục đích khác)
+- Backup files (để khôi phục sau này)
+
+### Xác minh gỡ cài đặt
+
+```bash
+# Kiểm tra service
+sudo systemctl status browsershield
+
+# Kiểm tra files
+ls -la /home/opc/browsershield
+
+# Kiểm tra port
+sudo netstat -tlnp | grep 5000
+
+# Kiểm tra firewall
+sudo firewall-cmd --list-ports
+```
 
 ## Hoàn tất
 
