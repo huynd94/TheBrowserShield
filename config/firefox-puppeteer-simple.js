@@ -4,6 +4,42 @@ const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 // Add stealth plugin
 puppeteerExtra.use(StealthPlugin());
 
+// Get Chrome executable path based on environment
+function getChromeExecutablePath() {
+    const os = require('os');
+    const platform = os.platform();
+    
+    // Common Chrome paths for different systems
+    const chromePaths = {
+        linux: [
+            '/usr/bin/google-chrome',
+            '/usr/bin/google-chrome-stable',
+            '/usr/bin/chromium-browser',
+            '/usr/bin/chromium',
+            '/snap/bin/chromium'
+        ],
+        darwin: [
+            '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+            '/Applications/Chromium.app/Contents/MacOS/Chromium'
+        ],
+        win32: [
+            'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+            'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe'
+        ]
+    };
+    
+    const fs = require('fs');
+    const paths = chromePaths[platform] || chromePaths.linux;
+    
+    for (const path of paths) {
+        if (fs.existsSync(path)) {
+            return path;
+        }
+    }
+    
+    return null; // Let Puppeteer use its bundled Chromium
+}
+
 /**
  * Create Firefox-style browser instance with Chrome engine
  * Compatible with Replit environment
@@ -18,9 +54,17 @@ async function createFirefoxBrowserWithProfile(profile) {
                 '--disable-dev-shm-usage',
                 '--disable-gpu',
                 '--no-first-run',
-                '--single-process'
+                '--single-process',
+                '--disable-web-security',
+                '--disable-features=VizDisplayCompositor'
             ]
         };
+
+        // Try to find Chrome executable or use bundled Chromium
+        const executablePath = getChromeExecutablePath();
+        if (executablePath) {
+            launchOptions.executablePath = executablePath;
+        }
 
         // Add proxy if configured
         if (profile.proxy && profile.proxy.host && profile.proxy.port) {

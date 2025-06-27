@@ -150,6 +150,8 @@ Preferred communication style: Simple, everyday language.
   - **NEW**: Fixed Firefox Mode compatibility issues by replacing deprecated puppeteer-firefox with Chrome+Firefox fingerprinting
   - **NEW**: Updated server to use actual browser services instead of mock implementations
   - **NEW**: Created VPS update scripts for seamless deployment of Firefox Mode fixes
+  - **NEW**: Completely removed deprecated puppeteer-firefox dependency from project
+  - **NEW**: Created comprehensive VPS fix script v3.0 with Chrome installation for production mode
 
 ## Mode Switching System
 
