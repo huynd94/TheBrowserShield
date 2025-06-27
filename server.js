@@ -179,8 +179,16 @@ const ModeSwitcher = require('./config/mode-switcher');
 const modeSwitcher = new ModeSwitcher();
 
 // Initialize browser service based on current mode
-const BrowserServiceClass = modeSwitcher.getBrowserServiceClass();
-const browserService = new BrowserServiceClass();
+let browserService;
+try {
+    const BrowserServiceClass = modeSwitcher.getBrowserServiceClass();
+    browserService = new BrowserServiceClass();
+} catch (error) {
+    console.error('Error initializing browser service:', error);
+    // Fallback to mock service for VPS compatibility
+    const MockBrowserService = require('./services/MockBrowserService');
+    browserService = new MockBrowserService();
+}
 
 // Mode endpoints
 app.get('/api/mode', (req, res) => {
