@@ -128,6 +128,15 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+- June 27, 2025: Project migration to Replit completed with comprehensive code cleanup
+  - Migrated from Replit Agent to standard Replit environment
+  - Cleaned up and synchronized entire codebase
+  - Removed obsolete files and deprecated dependencies
+  - Fixed server.js to use proper service architecture
+  - Removed 5 obsolete installation scripts
+  - Deleted unnecessary VPS deployment documentation
+  - Removed deprecated Firefox configuration files
+  - Updated server to version 2.0.0 with proper mode switching
 - June 26, 2025: Migration to Replit environment completed successfully
   - Fixed VPS deployment script for Oracle Linux 9 compatibility 
   - Created improved installation script with Chromium support
