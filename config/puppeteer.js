@@ -1,5 +1,6 @@
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+const AntiDetectionSuite = require('./AntiDetectionSuite');
 
 // Add stealth plugin to avoid detection
 puppeteer.use(StealthPlugin());
@@ -141,7 +142,10 @@ async function applyProfileSettings(page, profile) {
         });
     }
     
-    // Additional fingerprint spoofing if enabled
+    // Apply enhanced anti-detection suite
+    await AntiDetectionSuite.apply(page, profile);
+    
+    // Legacy spoofing for backward compatibility
     if (profile.spoofFingerprint) {
         await applySpoofingTechniques(page);
     }

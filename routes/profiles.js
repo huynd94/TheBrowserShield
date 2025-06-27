@@ -1,11 +1,14 @@
 const express = require('express');
 const ProfileService = require('../services/ProfileService');
-// Use BrowserService for Replit demo, switch to BrowserService for production
 const BrowserService = require('../services/BrowserService');
 const ProfileLogService = require('../services/ProfileLogService');
 const logger = require('../utils/logger');
 
 const router = express.Router();
+
+// Initialize services
+const browserService = new BrowserService();
+const profileLogService = ProfileLogService;
 
 /**
  * GET /api/profiles
@@ -135,10 +138,10 @@ router.delete('/:id', async (req, res, next) => {
 router.post('/:id/start', async (req, res, next) => {
     try {
         const { autoNavigateUrl } = req.body;
-        const sessionInfo = await BrowserService.startBrowser(req.params.id, autoNavigateUrl);
+        const sessionInfo = await browserService.startBrowser(req.params.id, autoNavigateUrl);
         
         // Log browser start
-        await ProfileLogService.logActivity(req.params.id, 'BROWSER_STARTED', {
+        await profileLogService.logActivity(req.params.id, 'BROWSER_STARTED', {
             ip: req.ip,
             userAgent: req.get('User-Agent'),
             autoNavigateUrl: autoNavigateUrl || null,
@@ -164,7 +167,7 @@ router.post('/:id/start', async (req, res, next) => {
  */
 router.post('/:id/stop', async (req, res, next) => {
     try {
-        const stopped = await BrowserService.stopBrowser(req.params.id);
+        const stopped = await browserService.stopBrowser(req.params.id);
         if (!stopped) {
             return res.status(404).json({
                 success: false,
@@ -193,7 +196,7 @@ router.post('/:id/stop', async (req, res, next) => {
  */
 router.get('/:id/status', async (req, res, next) => {
     try {
-        const status = BrowserService.getBrowserStatus(req.params.id);
+        const status = browserService.getBrowserStatus(req.params.id);
         if (!status) {
             return res.json({
                 success: true,
@@ -219,7 +222,7 @@ router.get('/:id/status', async (req, res, next) => {
  */
 router.get('/sessions/active', async (req, res, next) => {
     try {
-        const sessions = BrowserService.getAllActiveSessions();
+        const sessions = browserService.getAllActiveSessions();
         res.json({
             success: true,
             data: sessions,
@@ -244,10 +247,10 @@ router.post('/:id/navigate', async (req, res, next) => {
             });
         }
         
-        const result = await BrowserService.navigateToUrl(req.params.id, url);
+        const result = await browserService.navigateToUrl(req.params.id, url);
         
         // Log navigation
-        await ProfileLogService.logActivity(req.params.id, 'NAVIGATION', {
+        await profileLogService.logActivity(req.params.id, 'NAVIGATION', {
             url,
             ip: req.ip,
             userAgent: req.get('User-Agent'),
@@ -281,10 +284,10 @@ router.post('/:id/execute', async (req, res, next) => {
             });
         }
         
-        const result = await BrowserService.executeScript(req.params.id, script);
+        const result = await browserService.executeScript(req.params.id, script);
         
         // Log script execution
-        await ProfileLogService.logActivity(req.params.id, 'SCRIPT_EXECUTED', {
+        await profileLogService.logActivity(req.params.id, 'SCRIPT_EXECUTED', {
             script: script.substring(0, 200) + (script.length > 200 ? '...' : ''),
             ip: req.ip,
             userAgent: req.get('User-Agent'),
@@ -308,7 +311,7 @@ router.post('/:id/execute', async (req, res, next) => {
 router.get('/:id/logs', async (req, res, next) => {
     try {
         const limit = parseInt(req.query.limit) || 50;
-        const logs = await ProfileLogService.getProfileLogs(req.params.id, limit);
+        const logs = await profileLogService.getProfileLogs(req.params.id, limit);
         
         res.json({
             success: true,
@@ -327,7 +330,7 @@ router.get('/:id/logs', async (req, res, next) => {
 router.get('/system/logs', async (req, res, next) => {
     try {
         const limit = parseInt(req.query.limit) || 100;
-        const logs = await ProfileLogService.getActivityLogs(limit);
+        const logs = await profileLogService.getActivityLogs(limit);
         
         res.json({
             success: true,
@@ -347,8 +350,8 @@ router.get('/system/stats', async (req, res, next) => {
     try {
         const [profiles, activeSessions, logStats] = await Promise.all([
             ProfileService.getAllProfiles(),
-            Promise.resolve(BrowserService.getAllActiveSessions()),
-            ProfileLogService.getLogStats()
+            Promise.resolve(browserService.getAllActiveSessions()),
+            profileLogService.getLogStats()
         ]);
         
         const stats = {

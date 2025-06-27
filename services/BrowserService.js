@@ -5,6 +5,8 @@ const logger = require('../utils/logger');
 class BrowserService {
     constructor() {
         this.activeSessions = new Map(); // profileId -> { browser, page, startTime }
+        this.startingProfiles = new Set(); // Track profiles currently starting
+        this.stoppingProfiles = new Set(); // Track profiles currently stopping
     }
 
     /**
@@ -14,18 +16,26 @@ class BrowserService {
      * @returns {Object} Session info
      */
     async startBrowser(profileId, autoNavigateUrl = null) {
+        // Check if profile is currently being started
+        if (this.startingProfiles.has(profileId)) {
+            throw new Error(`Browser is currently starting for profile ${profileId}`);
+        }
+
         // Check if browser is already running for this profile
         if (this.activeSessions.has(profileId)) {
             throw new Error(`Browser is already running for profile ${profileId}`);
         }
 
-        // Get profile
-        const profile = await ProfileService.getProfile(profileId);
-        if (!profile) {
-            throw new Error(`Profile not found: ${profileId}`);
-        }
+        // Mark profile as starting to prevent race conditions
+        this.startingProfiles.add(profileId);
 
         try {
+            // Get profile
+            const profile = await ProfileService.getProfile(profileId);
+            if (!profile) {
+                throw new Error(`Profile not found: ${profileId}`);
+            }
+
             logger.info(`Starting browser for profile: ${profile.name} (${profileId})`);
             
             // Create browser instance with profile settings
@@ -91,6 +101,9 @@ class BrowserService {
             }
             
             throw error;
+        } finally {
+            // Always remove from starting profiles set
+            this.startingProfiles.delete(profileId);
         }
     }
 
@@ -100,25 +113,39 @@ class BrowserService {
      * @returns {boolean} True if stopped, false if not running
      */
     async stopBrowser(profileId) {
+        // Check if profile is currently being stopped
+        if (this.stoppingProfiles.has(profileId)) {
+            logger.info(`Browser is already being stopped for profile ${profileId}`);
+            return true;
+        }
+
         const session = this.activeSessions.get(profileId);
         if (!session) {
             return false;
         }
 
+        // Mark profile as stopping to prevent race conditions
+        this.stoppingProfiles.add(profileId);
+
         try {
             logger.info(`Stopping browser for profile: ${profileId}`);
             
-            await session.browser.close();
+            if (session.browser) {
+                await session.browser.close();
+            }
+            
             this.activeSessions.delete(profileId);
+            logger.info(`Browser stopped successfully for profile: ${profileId}`);
             
-            logger.info(`Browser stopped for profile: ${profileId}`);
             return true;
-            
         } catch (error) {
             logger.error(`Error stopping browser for profile ${profileId}:`, error);
-            // Remove from active sessions even if close failed
+            // Still remove from active sessions even if close failed
             this.activeSessions.delete(profileId);
-            throw error;
+            return true;
+        } finally {
+            // Always remove from stopping profiles set
+            this.stoppingProfiles.delete(profileId);
         }
     }
 
@@ -138,17 +165,7 @@ class BrowserService {
             profileName: session.profile.name,
             status: session.status,
             startTime: session.startTime,
-            uptime: Math.floor((Date.now() - new Date(session.startTime).getTime()) / 1000),
-            browserInfo: {
-                userAgent: session.profile.userAgent,
-                viewport: session.profile.viewport,
-                timezone: session.profile.timezone,
-                proxy: session.profile.proxy ? {
-                    host: session.profile.proxy.host,
-                    port: session.profile.proxy.port,
-                    type: session.profile.proxy.type
-                } : null
-            }
+            uptime: Math.floor((Date.now() - new Date(session.startTime).getTime()) / 1000)
         };
     }
 
@@ -175,14 +192,14 @@ class BrowserService {
      */
     async stopAllBrowsers() {
         const profileIds = Array.from(this.activeSessions.keys());
-        const promises = profileIds.map(profileId => 
-            this.stopBrowser(profileId).catch(error => 
-                logger.error(`Error stopping browser for profile ${profileId}:`, error)
-            )
-        );
+        const stopPromises = profileIds.map(profileId => this.stopBrowser(profileId));
         
-        await Promise.all(promises);
-        logger.info(`Stopped ${profileIds.length} browser sessions`);
+        try {
+            await Promise.all(stopPromises);
+            logger.info('All browser sessions stopped successfully');
+        } catch (error) {
+            logger.error('Error stopping some browser sessions:', error);
+        }
     }
 
     /**
@@ -199,9 +216,10 @@ class BrowserService {
 
         try {
             const result = await session.page.evaluate(script);
+            logger.info(`Script executed successfully for profile: ${profileId}`);
             return result;
         } catch (error) {
-            logger.error(`Error executing script in profile ${profileId}:`, error);
+            logger.error(`Script execution failed for profile ${profileId}:`, error);
             throw error;
         }
     }
@@ -219,22 +237,24 @@ class BrowserService {
         }
 
         try {
-            const response = await session.page.goto(url, { 
+            await session.page.goto(url, { 
                 waitUntil: 'networkidle2',
                 timeout: 30000 
             });
             
+            const currentUrl = session.page.url();
+            logger.info(`Navigation successful for profile ${profileId}: ${currentUrl}`);
+            
             return {
-                url: session.page.url(),
-                title: await session.page.title(),
-                status: response.status(),
-                statusText: response.statusText()
+                success: true,
+                url: currentUrl,
+                title: await session.page.title()
             };
         } catch (error) {
-            logger.error(`Error navigating to URL in profile ${profileId}:`, error);
+            logger.error(`Navigation failed for profile ${profileId}:`, error);
             throw error;
         }
     }
 }
 
-module.exports = new BrowserService();
+module.exports = BrowserService;

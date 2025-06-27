@@ -4,6 +4,8 @@ const logger = require('../utils/logger');
 
 const LOGS_DIR = path.join(__dirname, '../data/logs');
 const MAX_LOG_FILES = 10;
+const MAX_LOG_SIZE = 10 * 1024 * 1024; // 10MB per file
+const MAX_LOG_ENTRIES = 10000; // Maximum entries per file
 
 class ProfileLogService {
     constructor() {

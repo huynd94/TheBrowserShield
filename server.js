@@ -7,6 +7,12 @@ const modeRoutes = require('./routes/mode');
 const errorHandler = require('./middleware/errorHandler');
 const logger = require('./utils/logger');
 const { authenticateToken, rateLimiter } = require('./middleware/auth');
+const { 
+    performanceMonitor, 
+    systemHealthMonitor, 
+    createRateLimiter,
+    requestTracker 
+} = require('./middleware/performance');
 const ModeSwitcher = require('./config/mode-switcher');
 
 const app = express();
@@ -15,26 +21,31 @@ const PORT = process.env.PORT || 5000;
 // Initialize mode switcher
 const modeSwitcher = new ModeSwitcher();
 
+// Initialize system health monitoring
+const healthMonitor = systemHealthMonitor();
+
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Rate limiting (optional)
-if (process.env.ENABLE_RATE_LIMIT === 'true') {
-    app.use('/api', rateLimiter());
-}
+// Request tracking for debugging
+app.use(requestTracker);
+
+// Performance monitoring
+app.use(performanceMonitor);
+
+// Enhanced rate limiting with performance tracking
+app.use('/api', createRateLimiter({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: process.env.ENABLE_RATE_LIMIT === 'true' ? 100 : 10000, // Higher limit for development
+    message: 'Too many requests, please try again later.'
+}));
 
 // API Authentication (optional)
 if (process.env.API_TOKEN) {
     app.use('/api', authenticateToken);
 }
-
-// Logging middleware
-app.use((req, res, next) => {
-    logger.info(`${req.method} ${req.path} - ${req.ip}`);
-    next();
-});
 
 // Routes
 app.use('/api/profiles', profileRoutes);
@@ -51,6 +62,48 @@ app.get('/health', (req, res) => {
         timestamp: new Date().toISOString(),
         version: '2.0.0'
     });
+});
+
+// Enhanced system health endpoint
+app.get('/api/system/health', (req, res) => {
+    try {
+        const memory = process.memoryUsage();
+        const uptime = process.uptime();
+        const currentMode = modeSwitcher.getCurrentModeInfo();
+        
+        const systemHealth = {
+            timestamp: new Date().toISOString(),
+            uptime: Math.floor(uptime),
+            memory: {
+                rss: Math.round(memory.rss / 1024 / 1024), // MB
+                heapUsed: Math.round(memory.heapUsed / 1024 / 1024), // MB
+                heapTotal: Math.round(memory.heapTotal / 1024 / 1024), // MB
+                external: Math.round(memory.external / 1024 / 1024), // MB
+                heapUsagePercent: Math.round((memory.heapUsed / memory.heapTotal) * 100)
+            },
+            nodeVersion: process.version,
+            platform: process.platform,
+            arch: process.arch
+        };
+        
+        res.json({
+            success: true,
+            data: {
+                ...systemHealth,
+                mode: currentMode,
+                service: 'BrowserShield Anti-Detect Browser Manager',
+                version: '2.0.0',
+                status: 'healthy'
+            }
+        });
+    } catch (error) {
+        logger.error('Health check failed:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Health check failed',
+            details: error.message
+        });
+    }
 });
 
 // Serve documentation files
