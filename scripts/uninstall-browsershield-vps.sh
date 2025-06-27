@@ -41,94 +41,228 @@ if [ "$USER" != "opc" ]; then
     exit 1
 fi
 
+# Parse command line arguments
+DRY_RUN=false
+FORCE_DELETE=false
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --dry-run)
+            DRY_RUN=true
+            shift
+            ;;
+        --force)
+            FORCE_DELETE=true
+            shift
+            ;;
+        --help)
+            echo "BrowserShield Uninstall Script"
+            echo "Usage: $0 [OPTIONS]"
+            echo ""
+            echo "Options:"
+            echo "  --dry-run    Show what would be deleted without actually deleting"
+            echo "  --force      Skip confirmation prompts"
+            echo "  --help       Show this help message"
+            exit 0
+            ;;
+        *)
+            error "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
+
 echo -e "${RED}================================${NC}"
 echo -e "${RED}  BrowserShield Uninstall Script${NC}"
 echo -e "${RED}================================${NC}"
 echo
+
+if [ "$DRY_RUN" = true ]; then
+    echo -e "${YELLOW}DRY RUN MODE - No files will be deleted${NC}"
+    echo
+fi
+
 warn "This script will COMPLETELY REMOVE BrowserShield and all its data!"
 warn "The following will be deleted:"
 echo "  - Application files: $APP_DIR"
 echo "  - System service: $SERVICE_NAME"
-echo "  - Backup files: $BACKUP_DIR"
+if [ -d "$BACKUP_DIR" ]; then
+    echo "  - Backup files: $BACKUP_DIR"
+fi
 echo "  - Log files and configurations"
 echo "  - Firewall rules"
 echo "  - Cron jobs"
 echo
-read -p "Are you sure you want to continue? Type 'DELETE' to confirm: " CONFIRM
 
-if [ "$CONFIRM" != "DELETE" ]; then
-    info "Uninstall cancelled by user"
-    exit 0
+# Show current installation status
+if [ -d "$APP_DIR" ]; then
+    echo -e "${BLUE}Current Installation Status:${NC}"
+    echo "  ✓ Application directory exists"
+    if sudo systemctl list-unit-files | grep -q $SERVICE_NAME; then
+        echo "  ✓ System service exists"
+    fi
+    if sudo systemctl is-active --quiet $SERVICE_NAME; then
+        echo "  ✓ Service is running"
+    fi
+    if crontab -l 2>/dev/null | grep -q "browsershield"; then
+        echo "  ✓ Cron jobs exist"
+    fi
+    echo
 fi
 
-log "Starting BrowserShield complete uninstall process..."
+if [ "$FORCE_DELETE" != true ] && [ "$DRY_RUN" != true ]; then
+    echo -e "${YELLOW}Safety options:${NC}"
+    echo "  --dry-run    See what would be deleted (safe preview)"
+    echo "  --force      Skip this confirmation"
+    echo
+    read -p "Are you sure you want to continue? Type 'DELETE' to confirm: " CONFIRM
+    
+    if [ "$CONFIRM" != "DELETE" ]; then
+        info "Uninstall cancelled by user"
+        info "Use '--dry-run' to see what would be deleted safely"
+        exit 0
+    fi
+elif [ "$DRY_RUN" = true ]; then
+    info "DRY RUN - Showing what would be deleted..."
+fi
+
+if [ "$DRY_RUN" = true ]; then
+    log "DRY RUN - Would perform the following actions:"
+else
+    log "Starting BrowserShield complete uninstall process..."
+fi
 
 # Stop and disable service
-log "Stopping BrowserShield service..."
-if sudo systemctl is-active --quiet $SERVICE_NAME; then
-    sudo systemctl stop $SERVICE_NAME
-    log "Service stopped"
+if [ "$DRY_RUN" = true ]; then
+    log "DRY RUN - Would stop BrowserShield service..."
+    if sudo systemctl is-active --quiet $SERVICE_NAME; then
+        info "Would stop running service"
+    else
+        info "Service is not running"
+    fi
+    
+    if sudo systemctl is-enabled --quiet $SERVICE_NAME; then
+        info "Would disable service"
+    else
+        info "Service is not enabled"
+    fi
 else
-    info "Service was not running"
-fi
+    log "Stopping BrowserShield service..."
+    if sudo systemctl is-active --quiet $SERVICE_NAME; then
+        sudo systemctl stop $SERVICE_NAME
+        log "Service stopped"
+    else
+        info "Service was not running"
+    fi
 
-if sudo systemctl is-enabled --quiet $SERVICE_NAME; then
-    sudo systemctl disable $SERVICE_NAME
-    log "Service disabled"
-else
-    info "Service was not enabled"
+    if sudo systemctl is-enabled --quiet $SERVICE_NAME; then
+        sudo systemctl disable $SERVICE_NAME
+        log "Service disabled"
+    else
+        info "Service was not enabled"
+    fi
 fi
 
 # Remove systemd service file
-log "Removing systemd service file..."
-if [ -f "/etc/systemd/system/${SERVICE_NAME}.service" ]; then
-    sudo rm -f "/etc/systemd/system/${SERVICE_NAME}.service"
-    sudo systemctl daemon-reload
-    log "Systemd service file removed"
+if [ "$DRY_RUN" = true ]; then
+    log "DRY RUN - Would remove systemd service file..."
+    if [ -f "/etc/systemd/system/${SERVICE_NAME}.service" ]; then
+        info "Would remove systemd service file"
+    else
+        info "Systemd service file not found"
+    fi
 else
-    info "Systemd service file not found"
+    log "Removing systemd service file..."
+    if [ -f "/etc/systemd/system/${SERVICE_NAME}.service" ]; then
+        sudo rm -f "/etc/systemd/system/${SERVICE_NAME}.service"
+        sudo systemctl daemon-reload
+        log "Systemd service file removed"
+    else
+        info "Systemd service file not found"
+    fi
 fi
 
 # Remove firewall rules
-log "Removing firewall rules..."
-if sudo firewall-cmd --list-ports | grep -q "${PORT}/tcp"; then
-    sudo firewall-cmd --permanent --remove-port=${PORT}/tcp
-    sudo firewall-cmd --reload
-    log "Firewall rule for port $PORT removed"
+if [ "$DRY_RUN" = true ]; then
+    log "DRY RUN - Would remove firewall rules..."
+    if sudo firewall-cmd --list-ports | grep -q "${PORT}/tcp"; then
+        info "Would remove firewall rule for port $PORT"
+    else
+        info "Firewall rule for port $PORT not found"
+    fi
 else
-    info "Firewall rule for port $PORT not found"
+    log "Removing firewall rules..."
+    if sudo firewall-cmd --list-ports | grep -q "${PORT}/tcp"; then
+        sudo firewall-cmd --permanent --remove-port=${PORT}/tcp
+        sudo firewall-cmd --reload
+        log "Firewall rule for port $PORT removed"
+    else
+        info "Firewall rule for port $PORT not found"
+    fi
 fi
 
 # Remove cron jobs
-log "Removing cron jobs..."
-if crontab -l 2>/dev/null | grep -q "monitor-browsershield\|backup-browsershield"; then
-    crontab -l 2>/dev/null | grep -v "monitor-browsershield\|backup-browsershield" | crontab -
-    log "Cron jobs removed"
+if [ "$DRY_RUN" = true ]; then
+    log "DRY RUN - Would remove cron jobs..."
+    if crontab -l 2>/dev/null | grep -q "monitor-browsershield\|backup-browsershield"; then
+        info "Would remove BrowserShield cron jobs"
+    else
+        info "No BrowserShield cron jobs found"
+    fi
 else
-    info "No BrowserShield cron jobs found"
+    log "Removing cron jobs..."
+    if crontab -l 2>/dev/null | grep -q "monitor-browsershield\|backup-browsershield"; then
+        crontab -l 2>/dev/null | grep -v "monitor-browsershield\|backup-browsershield" | crontab -
+        log "Cron jobs removed"
+    else
+        info "No BrowserShield cron jobs found"
+    fi
 fi
 
 # Remove application directory
-log "Removing application directory..."
-if [ -d "$APP_DIR" ]; then
-    rm -rf "$APP_DIR"
-    log "Application directory removed: $APP_DIR"
+if [ "$DRY_RUN" = true ]; then
+    log "DRY RUN - Would remove application directory..."
+    if [ -d "$APP_DIR" ]; then
+        info "Would remove application directory: $APP_DIR"
+    else
+        info "Application directory not found: $APP_DIR"
+    fi
 else
-    info "Application directory not found: $APP_DIR"
+    log "Removing application directory..."
+    if [ -d "$APP_DIR" ]; then
+        rm -rf "$APP_DIR"
+        log "Application directory removed: $APP_DIR"
+    else
+        info "Application directory not found: $APP_DIR"
+    fi
 fi
 
 # Remove backup directory
-log "Removing backup directory..."
-if [ -d "$BACKUP_DIR" ]; then
-    read -p "Remove all backups in $BACKUP_DIR? (y/N): " REMOVE_BACKUPS
-    if [[ $REMOVE_BACKUPS =~ ^[Yy]$ ]]; then
-        rm -rf "$BACKUP_DIR"
-        log "Backup directory removed: $BACKUP_DIR"
+if [ "$DRY_RUN" = true ]; then
+    log "DRY RUN - Would ask about backup directory..."
+    if [ -d "$BACKUP_DIR" ]; then
+        info "Would ask to remove backup directory: $BACKUP_DIR"
     else
-        warn "Backup directory preserved: $BACKUP_DIR"
+        info "Backup directory not found: $BACKUP_DIR"
     fi
 else
-    info "Backup directory not found: $BACKUP_DIR"
+    log "Removing backup directory..."
+    if [ -d "$BACKUP_DIR" ]; then
+        if [ "$FORCE_DELETE" = true ]; then
+            rm -rf "$BACKUP_DIR"
+            log "Backup directory removed: $BACKUP_DIR"
+        else
+            read -p "Remove all backups in $BACKUP_DIR? (y/N): " REMOVE_BACKUPS
+            if [[ $REMOVE_BACKUPS =~ ^[Yy]$ ]]; then
+                rm -rf "$BACKUP_DIR"
+                log "Backup directory removed: $BACKUP_DIR"
+            else
+                warn "Backup directory preserved: $BACKUP_DIR"
+            fi
+        fi
+    else
+        info "Backup directory not found: $BACKUP_DIR"
+    fi
 fi
 
 # Remove management scripts
@@ -216,36 +350,58 @@ rm -rf /tmp/browsershield* 2>/dev/null || true
 rm -rf /tmp/TheBrowserShield* 2>/dev/null || true
 
 # Verify uninstall
-log "Verifying uninstall..."
-VERIFICATION_PASSED=true
+if [ "$DRY_RUN" = true ]; then
+    log "DRY RUN - Would verify uninstall completion..."
+    info "Would check if all components were removed successfully"
+else
+    log "Verifying uninstall..."
+    VERIFICATION_PASSED=true
 
-if [ -d "$APP_DIR" ]; then
-    error "Application directory still exists: $APP_DIR"
-    VERIFICATION_PASSED=false
-fi
+    if [ -d "$APP_DIR" ]; then
+        error "Application directory still exists: $APP_DIR"
+        VERIFICATION_PASSED=false
+    fi
 
-if sudo systemctl list-unit-files | grep -q $SERVICE_NAME; then
-    error "Systemd service still exists: $SERVICE_NAME"
-    VERIFICATION_PASSED=false
-fi
+    if sudo systemctl list-unit-files | grep -q $SERVICE_NAME; then
+        error "Systemd service still exists: $SERVICE_NAME"
+        VERIFICATION_PASSED=false
+    fi
 
-if sudo firewall-cmd --list-ports | grep -q "${PORT}/tcp"; then
-    error "Firewall rule still exists for port: $PORT"
-    VERIFICATION_PASSED=false
-fi
+    if sudo firewall-cmd --list-ports | grep -q "${PORT}/tcp"; then
+        error "Firewall rule still exists for port: $PORT"
+        VERIFICATION_PASSED=false
+    fi
 
-if crontab -l 2>/dev/null | grep -q "browsershield"; then
-    error "Cron jobs still exist"
-    VERIFICATION_PASSED=false
+    if crontab -l 2>/dev/null | grep -q "browsershield"; then
+        error "Cron jobs still exist"
+        VERIFICATION_PASSED=false
+    fi
 fi
 
 # Final status
 echo
 echo -e "${BLUE}================================${NC}"
-echo -e "${BLUE}  Uninstall Summary${NC}"
+if [ "$DRY_RUN" = true ]; then
+    echo -e "${BLUE}  Dry Run Summary${NC}"
+else
+    echo -e "${BLUE}  Uninstall Summary${NC}"
+fi
 echo -e "${BLUE}================================${NC}"
 
-if [ "$VERIFICATION_PASSED" = true ]; then
+if [ "$DRY_RUN" = true ]; then
+    log "DRY RUN completed - No files were actually deleted"
+    echo -e "${YELLOW}The following would be removed:${NC}"
+    echo -e "${YELLOW}✓ Application files${NC}"
+    echo -e "${YELLOW}✓ System service${NC}"
+    echo -e "${YELLOW}✓ Firewall rules${NC}"
+    echo -e "${YELLOW}✓ Cron jobs${NC}"
+    echo -e "${YELLOW}✓ Log files${NC}"
+    echo -e "${YELLOW}✓ Configuration files${NC}"
+    echo -e "${YELLOW}✓ All processes${NC}"
+    echo
+    info "To actually uninstall, run: $0 (without --dry-run)"
+    info "To force uninstall without prompts, run: $0 --force"
+elif [ "$VERIFICATION_PASSED" = true ]; then
     log "BrowserShield has been completely uninstalled!"
     echo -e "${GREEN}✓ Application files removed${NC}"
     echo -e "${GREEN}✓ System service removed${NC}"

@@ -192,8 +192,32 @@ run_health_check() {
 }
 
 uninstall_browsershield() {
-    echo -e "${RED}Starting complete uninstall...${NC}"
-    curl -fsSL $GITHUB_REPO/scripts/uninstall-browsershield-vps.sh | bash
+    echo -e "${BLUE}BrowserShield Uninstall Options:${NC}"
+    echo "1. Preview what would be deleted (safe)"
+    echo "2. Complete uninstall with confirmation"
+    echo "3. Force uninstall (no prompts)"
+    echo "4. Cancel"
+    echo
+    read -p "Choose option (1-4): " UNINSTALL_OPTION
+    
+    case $UNINSTALL_OPTION in
+        1)
+            echo -e "${GREEN}Running safe preview...${NC}"
+            curl -fsSL $GITHUB_REPO/scripts/uninstall-browsershield-vps.sh | bash -s -- --dry-run
+            ;;
+        2)
+            echo -e "${RED}Starting complete uninstall...${NC}"
+            curl -fsSL $GITHUB_REPO/scripts/uninstall-browsershield-vps.sh | bash
+            ;;
+        3)
+            echo -e "${RED}Starting force uninstall...${NC}"
+            curl -fsSL $GITHUB_REPO/scripts/uninstall-browsershield-vps.sh | bash -s -- --force
+            ;;
+        4|*)
+            echo -e "${YELLOW}Uninstall cancelled${NC}"
+            return 0
+            ;;
+    esac
 }
 
 show_help() {

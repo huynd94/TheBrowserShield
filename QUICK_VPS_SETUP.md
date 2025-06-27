@@ -190,19 +190,43 @@ Logs được lưu tại:
 
 ## Gỡ cài đặt hoàn toàn
 
-### Gỡ cài đặt tự động
+### Test gỡ cài đặt an toàn (khuyến nghị)
 
 ```bash
-# Gỡ cài đặt hoàn toàn BrowserShield
-curl -fsSL https://raw.githubusercontent.com/huynd94/TheBrowserShield/main/scripts/uninstall-browsershield-vps.sh | bash
+# Script test hoàn toàn an toàn - chỉ xem, không xóa gì
+curl -fsSL https://raw.githubusercontent.com/huynd94/TheBrowserShield/main/scripts/test-uninstall-safe.sh | bash
 ```
 
-### Gỡ cài đặt qua VPS Manager
+Script này sẽ:
+- ✅ Hiển thị những gì sẽ bị xóa
+- ✅ Hoàn toàn an toàn - không xóa gì cả
+- ✅ Giúp bạn quyết định có muốn gỡ cài đặt thực sự
+
+### Gỡ cài đặt an toàn với preview
 
 ```bash
-# Sử dụng script quản lý
+# Xem trước những gì sẽ bị xóa (an toàn)
+curl -fsSL https://raw.githubusercontent.com/huynd94/TheBrowserShield/main/scripts/uninstall-browsershield-vps.sh | bash -s -- --dry-run
+
+# Gỡ cài đặt với xác nhận
+curl -fsSL https://raw.githubusercontent.com/huynd94/TheBrowserShield/main/scripts/uninstall-browsershield-vps.sh | bash
+
+# Gỡ cài đặt nhanh (bỏ qua xác nhận)
+curl -fsSL https://raw.githubusercontent.com/huynd94/TheBrowserShield/main/scripts/uninstall-browsershield-vps.sh | bash -s -- --force
+```
+
+### Gỡ cài đặt qua VPS Manager (khuyến nghị)
+
+```bash
+# Sử dụng script quản lý với menu tùy chọn
 ./vps-manager.sh uninstall
 ```
+
+Menu sẽ hiển thị:
+1. **Preview what would be deleted** (an toàn - chỉ xem)
+2. **Complete uninstall with confirmation** (gỡ cài đặt thông thường)
+3. **Force uninstall** (gỡ cài đặt nhanh)
+4. **Cancel** (hủy bỏ)
 
 ### Những gì sẽ bị xóa
 
