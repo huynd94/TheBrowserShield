@@ -25,6 +25,62 @@ show_banner() {
     echo
 }
 
+update_browsershield() {
+    echo -e "${GREEN}Updating BrowserShield to latest version...${NC}"
+    if [ ! -d "$APP_DIR" ]; then
+        echo -e "${RED}BrowserShield not installed. Use 'deploy' command first.${NC}"
+        exit 1
+    fi
+    
+    curl -fsSL $GITHUB_REPO/scripts/vps-update-oracle.sh | bash
+}
+
+configure_production() {
+    echo -e "${GREEN}Configuring production environment...${NC}"
+    if [ ! -d "$APP_DIR" ]; then
+        echo -e "${RED}BrowserShield not installed. Use 'deploy' command first.${NC}"
+        exit 1
+    fi
+    
+    curl -fsSL $GITHUB_REPO/scripts/configure-production-vps.sh | bash
+}
+
+show_status() {
+    echo -e "${GREEN}BrowserShield System Status${NC}"
+    echo "================================"
+    
+    # Service status
+    if sudo systemctl is-active --quiet $SERVICE_NAME; then
+        echo -e "Service Status: ${GREEN}Running${NC}"
+        echo "Uptime: $(sudo systemctl show $SERVICE_NAME --property=ActiveEnterTimestamp --value | cut -d' ' -f2-)"
+    else
+        echo -e "Service Status: ${RED}Stopped${NC}"
+    fi
+    
+    # System info
+    echo "System: $(cat /etc/oracle-release 2>/dev/null || echo 'Oracle Linux')"
+    echo "Memory: $(free -h | grep '^Mem:' | awk '{print $3 "/" $2}')"
+    echo "Disk: $(df -h / | tail -1 | awk '{print $3 "/" $2 " (" $5 " used)"}')"
+    
+    # Network
+    echo "IP Address: $(curl -s --max-time 5 ifconfig.me || echo 'Unknown')"
+    echo "Port 5000: $(sudo netstat -tlnp | grep :5000 && echo 'Open' || echo 'Closed')"
+    
+    # Application status
+    if [ -d "$APP_DIR" ]; then
+        echo -e "Application: ${GREEN}Installed${NC}"
+        echo "Location: $APP_DIR"
+        echo "Version: $(grep '"version"' $APP_DIR/package.json 2>/dev/null | cut -d'"' -f4 || echo 'Unknown')"
+    else
+        echo -e "Application: ${RED}Not Installed${NC}"
+    fi
+}
+
+view_logs() {
+    echo -e "${GREEN}Viewing BrowserShield logs (Press Ctrl+C to exit)${NC}"
+    sudo journalctl -u $SERVICE_NAME -f
+}
+
 show_menu() {
     echo -e "${BLUE}Available Commands:${NC}"
     echo "  1. deploy        - Deploy BrowserShield with Production Mode"
@@ -46,7 +102,27 @@ show_menu() {
 
 deploy_browsershield() {
     echo -e "${GREEN}Deploying BrowserShield with Production Mode...${NC}"
-    curl -fsSL $GITHUB_REPO/scripts/deploy-oracle-linux-production.sh | bash
+    echo -e "${BLUE}This will install:${NC}"
+    echo "  - Node.js 20"
+    echo "  - Google Chrome browser"
+    echo "  - BrowserShield application"
+    echo "  - SystemD service"
+    echo "  - Firewall configuration"
+    echo
+    read -p "Continue with deployment? (y/N): " CONFIRM
+    if [[ ! $CONFIRM =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}Deployment cancelled${NC}"
+        return 0
+    fi
+    
+    echo -e "${GREEN}Starting deployment...${NC}"
+    if curl -fsSL $GITHUB_REPO/scripts/deploy-oracle-linux-production.sh | bash; then
+        echo -e "${GREEN}Deployment completed successfully!${NC}"
+        echo -e "${YELLOW}Access: http://$(curl -s ifconfig.me):5000${NC}"
+    else
+        echo -e "${RED}Deployment failed!${NC}"
+        exit 1
+    fi
 }
 
 update_browsershield() {

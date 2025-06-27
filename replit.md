@@ -1,8 +1,8 @@
-# Anti-Detect Browser Profile Manager
+# VPS Uninstallation and Management Script Suite
 
 ## Overview
 
-This is a Node.js backend application that provides anti-detect browser profile management capabilities similar to GoLogin/Multilogin services. The system allows users to create, manage, and control browser profiles with custom fingerprints and proxy configurations for web automation and privacy purposes.
+This is a comprehensive bash-based uninstallation and management tool suite designed for Oracle Linux 9 VPS systems. The repository provides safe, flexible, and user-friendly system cleanup scripts with validation, safety checks, and error handling capabilities. The suite includes modular uninstall options (dry-run, force delete), comprehensive testing utilities, and complete VPS lifecycle management tools.
 
 ## System Architecture
 
@@ -128,6 +128,15 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+- June 27, 2025: VPS Manager Script Fixed for Oracle Linux 9
+  - **CRITICAL FIX**: Created vps-manager-fixed.sh to resolve installation errors on Oracle Linux 9
+  - **Enhanced Error Handling**: Added comprehensive error checking and timeout improvements
+  - **User Permission Validation**: Script now checks for proper user (opc) vs root execution
+  - **Network Timeout Fixes**: Increased timeout values for slower VPS network connections
+  - **Improved Logging**: Added detailed logging with timestamps for better debugging
+  - **Oracle Linux Compatibility**: Optimized specifically for Oracle Linux 9 environment
+  - **Safe Operations**: Added dry-run mode and confirmation prompts for destructive operations
+  - **Complete Documentation**: Created QUICK_VPS_SETUP_FIXED.md with step-by-step instructions
 - June 27, 2025: VPS Oracle Linux 9 Production Deployment Ready
   - **VPS DEPLOYMENT SCRIPTS**: Complete automated deployment for Oracle Linux 9 with Production Mode
   - **One-Click Installation**: Single command deployment script with Chrome browser automation
