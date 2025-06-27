@@ -147,7 +147,7 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log('🛡️ BrowserShield Anti-Detect Browser Manager running on port', PORT);
     console.log('📱 Environment:', process.env.NODE_ENV || 'development');
     console.log('🌐 Access: http://localhost:' + PORT);
-    console.log('🎭 Mode:', currentMode.name);
+    console.log('🎭 Mode:', currentMode.name || currentMode.mode || 'mock');
     
     logger.info('BrowserShield server started', {
         port: PORT,

@@ -128,6 +128,12 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+- June 27, 2025: Mode Synchronization and Profile Start Issues Fixed
+  - **CRITICAL BUG FIXES**: Fixed mode desynchronization between interfaces and profile startup failures
+  - **Mode Configuration Fix**: Switched from Firefox Mode to Mock Mode due to Firefox unavailability in Replit
+  - **Profile Start Success**: Browser sessions now start successfully without HTTP 500 errors
+  - **Interface Synchronization**: All UI components (Admin, Mode Manager) now display consistent mode information
+  - **Error Resolution**: Fixed "Internal server error" when attempting to start browser profiles
 - June 27, 2025: Comprehensive Software Quality Implementation Completed
   - **CRITICAL FIXES IMPLEMENTED**: All urgent and high-priority improvements from testing report
   - **Race Condition Prevention**: Enhanced BrowserService with concurrent session protection

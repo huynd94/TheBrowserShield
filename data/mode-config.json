@@ -1,11 +1,11 @@
 {
-  "mode": "firefox",
-  "lastChanged": "2025-06-26T15:08:00.000Z",
+  "mode": "mock",
+  "lastChanged": "2025-06-27T02:47:00.000Z",
   "capabilities": {
-    "realBrowser": true,
-    "screenshots": true,
-    "websiteInteraction": true,
-    "firefoxAutomation": true,
-    "alternativeFingerprinting": true
+    "profileManagement": true,
+    "sessionSimulation": true,
+    "apiTesting": true,
+    "fastestPerformance": true,
+    "highestReliability": true
   }
 }
