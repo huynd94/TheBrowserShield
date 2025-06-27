@@ -128,6 +128,15 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+- June 27, 2025: Complete Oracle Linux 9 Fix Suite for VPS Deployment Issues
+  - **CRITICAL FIX**: Created specialized scripts to resolve "Unable to find a match: htop" error
+  - **fix-oracle-linux-packages.sh**: Handles EPEL repository, graceful htop fallback, Chrome/Chromium installation
+  - **install-browsershield-oracle-fixed.sh**: Complete installation script with package availability handling
+  - **uninstall-oracle-linux-fixed.sh**: Safe removal tool with dry-run mode and Oracle Linux 9 optimization
+  - **Enhanced Error Handling**: Graceful degradation for missing packages, timeout improvements, retry logic
+  - **VPS-Specific Optimization**: Network timeout fixes, permission validation, repository configuration
+  - **One-Line Installation Commands**: Simple curl commands for immediate VPS deployment
+  - **Comprehensive Documentation**: ORACLE_LINUX_9_FIX.md with step-by-step troubleshooting guide
 - June 27, 2025: VPS Manager Script Fixed for Oracle Linux 9
   - **CRITICAL FIX**: Created vps-manager-fixed.sh to resolve installation errors on Oracle Linux 9
   - **Enhanced Error Handling**: Added comprehensive error checking and timeout improvements
